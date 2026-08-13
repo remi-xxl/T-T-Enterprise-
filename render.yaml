@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: cd client && npm install --include=dev && npm run build && cd .. && npm install && npx prisma generate
-    startCommand: node server.js
+    startCommand: npx prisma migrate deploy && node server.js
     envVars:
       - key: DATABASE_URL
         fromDatabase:
