@@ -668,12 +668,13 @@ app.get('/api/customers/:id/purchases', async (req, res) => {
 });
 
 app.get('/api/products/template', (req, res) => {
-  const csvContent = 'name,price,piecesPerCarton,colorCode,lowStockThreshold,totalCartons,hasVariants,variantName,variantCartons\n' +
+  const csvContent = 'name,price,piecesPerCarton,colorCode,lowStockThreshold,totalCartons,hasVariants,variantName,variantCartons,totalPieces\n' +
     'Lush Wow Braid,500,25,,5,10\n' +
     'Ankara Fabric,1500,20,RED,3,5\n' +
     'Lush Jumbo,800,30,,5,,true,Color 1,5\n' +
-    'Lush Jumbo,800,30,,5,,true,Gold,3';
-  res.setHeader('Content-Type', 'text/csv');
+    'Lush Jumbo,800,30,,5,,true,Gold,3\n' +
+    'Mega growth relax,1200,12,,,,,,,,5\n' +
+    'Karen Paris,1800,48,,,,,,,,10';  res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename=products_template.csv');
   res.send(csvContent);
 });
@@ -698,7 +699,8 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
           const piecesPerCarton = parseInt(row.piecesPerCarton);
           const lowStockThreshold = row.lowStockThreshold ? parseInt(row.lowStockThreshold) : 5;
           const totalCartons = row.totalCartons ? parseInt(row.totalCartons) : 0;
-          const hasVariants = row.hasVariants === 'true';
+          const totalPiecesOverride = row.totalPieces ? parseInt(row.totalPieces) : null;
+          const hasVariants = row.hasVariants?.toString().trim().toLowerCase() === 'true';
           const variantName = row.variantName?.trim() || null;
           const variantCartons = row.variantCartons ? parseInt(row.variantCartons) : 0;
 
@@ -708,7 +710,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
           results.push({
             name: row.name.trim(), price, piecesPerCarton,
             colorCode: row.colorCode?.trim() || null,
-            lowStockThreshold, totalCartons, hasVariants, variantName, variantCartons
+            lowStockThreshold, totalCartons, totalPiecesOverride, hasVariants, variantName, variantCartons
           });
         } catch (err) {
           errors.push(`Row ${rowNumber}: ${err.message}`);
@@ -725,8 +727,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
             if (r.hasVariants && r.variantName) {
               entry.variants.push({ name: r.variantName, colorCode: r.colorCode, totalCartons: r.variantCartons });
               entry.hasVariants = true;
-            }
-            if (r.totalCartons > entry.totalCartons) {
+            } else if (r.totalCartons > 0) {
               entry.totalCartons = r.totalCartons;
             }
           }
@@ -757,11 +758,16 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
                   });
                 }
               } else {
-                const totalPieces = (data.totalCartons || 0) * data.piecesPerCarton;
+                const totalPieces = data.totalPiecesOverride != null
+                  ? data.totalPiecesOverride
+                  : (data.totalCartons || 0) * data.piecesPerCarton;
+                const totalCartons = data.totalPiecesOverride != null
+                  ? 0
+                  : data.totalCartons || 0;
                 await prisma.inventory.create({
                   data: {
-                    productId: product.id, totalCartons: data.totalCartons || 0,
-                    remainingCartons: data.totalCartons || 0, totalPieces, remainingPieces: totalPieces
+                    productId: product.id, totalCartons,
+                    remainingCartons: totalCartons, totalPieces, remainingPieces: totalPieces
                   }
                 });
               }
