@@ -6,8 +6,17 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
+
+console.log('[STARTUP] Running prisma db push to ensure schema is synced...');
+try {
+  execSync('npx prisma db push 2>&1', { stdio: 'inherit', timeout: 60000 });
+  console.log('[STARTUP] Prisma db push completed');
+} catch (err) {
+  console.error('[STARTUP] Prisma db push failed:', err.message);
+}
 
 const app = express();
 const dbUrl = process.env.DATABASE_URL;
@@ -646,6 +655,7 @@ app.post('/api/wholesale-sales', async (req, res) => {
   }
 });
 
+
 app.get('/api/customers/:id/purchases', async (req, res) => {
   try {
     const { id } = req.params;
@@ -737,6 +747,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
           for (const [name, data] of productMap) {
             try {
               const hasVariants = data.hasVariants && data.variants.length > 0;
+              console.log(`[BULK] Creating "${name}": hasVariants=${hasVariants}, variants=${data.variants.length}`);
               const product = await prisma.product.create({
                 data: {
                   name: data.name, price: data.price, piecesPerCarton: data.piecesPerCarton,
@@ -746,6 +757,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
               });
               if (hasVariants) {
                 for (const v of data.variants) {
+                  console.log(`[BULK]   Creating variant "${v.name}" for product ${product.id}`);
                   const variant = await prisma.variant.create({
                     data: { productId: product.id, name: v.name, colorCode: v.colorCode || null }
                   });
@@ -757,6 +769,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
                     }
                   });
                 }
+                console.log(`[BULK]   Created ${data.variants.length} variants for "${name}"`);
               } else {
                 const totalPieces = data.totalPiecesOverride != null
                   ? data.totalPiecesOverride
@@ -773,6 +786,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
               }
               createdProducts.push(product);
             } catch (err) {
+              console.error(`[BULK] Error creating "${name}":`, err.message);
               errors.push(`Product "${name}": ${err.message}`);
             }
           }
