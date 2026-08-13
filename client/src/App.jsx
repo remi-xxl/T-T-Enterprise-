@@ -158,7 +158,7 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
-              <Link to="/" className="text-xl font-bold">Sales Tracker</Link>
+              <Link to="/" className="text-xl font-bold">T&T ENTERPRISE</Link>
               <div className="flex space-x-4">
                 {isManager && (
                   <Link to="/" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
