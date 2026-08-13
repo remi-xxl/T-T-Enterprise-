@@ -3,7 +3,7 @@ services:
     name: sales-tracker
     runtime: node
     plan: free
-    buildCommand: cd client && npm install --include=dev && npm run build && cd .. && npm install && npx prisma generate && npx prisma db push --skip-generate
+    buildCommand: cd client && npm install --include=dev && npm run build && cd .. && npm install && npx prisma generate && npx prisma db push
     startCommand: node server.js
     envVars:
       - key: DATABASE_URL
