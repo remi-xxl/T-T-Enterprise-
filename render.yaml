@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: sales-tracker
+    runtime: node
+    plan: free
+    buildCommand: cd client && npm install && npm run build && cd .. && npm install && npx prisma generate
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sales-tracker-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION
+        sync: false
+
+databases:
+  - name: sales-tracker-db
+    plan: free
+    databaseName: tracker_db

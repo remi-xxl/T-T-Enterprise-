@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("SALES_REP")
+  createdAt DateTime @default(now())
+  sales     Sale[]
+}
+
+model Product {
+  id                Int       @id @default(autoincrement())
+  name              String
+  price             Float
+  piecesPerCarton   Int
+  colorCode         String?
+  lowStockThreshold Int       @default(5)
+  hasVariants       Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  inventory         Inventory?
+  variants          Variant[]
+  saleItems         SaleItem[]
+}
+
+model Variant {
+  id              Int              @id @default(autoincrement())
+  productId       Int
+  product         Product          @relation(fields: [productId], references: [id])
+  name            String
+  colorCode       String?
+  createdAt       DateTime         @default(now())
+  inventory       VariantInventory?
+  saleItems       SaleItem[]
+}
+
+model Inventory {
+  id               Int     @id @default(autoincrement())
+  productId        Int     @unique
+  product          Product @relation(fields: [productId], references: [id])
+  totalCartons     Int     @default(0)
+  remainingCartons Int     @default(0)
+  totalPieces      Int     @default(0)
+  remainingPieces  Int     @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model VariantInventory {
+  id               Int      @id @default(autoincrement())
+  variantId        Int      @unique
+  variant          Variant  @relation(fields: [variantId], references: [id])
+  totalCartons     Int      @default(0)
+  remainingCartons Int      @default(0)
+  totalPieces      Int      @default(0)
+  remainingPieces  Int      @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  sales     Sale[]
+}
+
+model Sale {
+  id              Int        @id @default(autoincrement())
+  userId          Int
+  user            User       @relation(fields: [userId], references: [id])
+  customerId      Int?
+  customer        Customer?  @relation(fields: [customerId], references: [id])
+  paymentMode     String
+  saleCategory    String     @default("retail")
+  totalAmount     Float
+  totalQuantity   Int
+  saleDate        DateTime   @default(now())
+  notes           String?
+  createdAt       DateTime   @default(now())
+  items           SaleItem[]
+}
+
+model SaleItem {
+  id          Int      @id @default(autoincrement())
+  saleId      Int
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  productId   Int?
+  product     Product? @relation(fields: [productId], references: [id])
+  variantId   Int?
+  variant     Variant? @relation(fields: [variantId], references: [id])
+  quantity    Int
+  saleType    String
+  unitPrice   Float
+  totalPrice  Float
+  productName String?
+}
