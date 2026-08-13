@@ -10,7 +10,12 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 
 const app = express();
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error('ERROR: DATABASE_URL is not set!');
+  process.exit(1);
+}
+const adapter = new PrismaPg({ connectionString: dbUrl });
 const prisma = new PrismaClient({ adapter });
 
 app.use(cors());
@@ -716,43 +721,54 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
             if (!productMap.has(r.name)) {
               productMap.set(r.name, { ...r, variants: [] });
             }
+            const entry = productMap.get(r.name);
             if (r.hasVariants && r.variantName) {
-              productMap.get(r.name).variants.push({ name: r.variantName, totalCartons: r.variantCartons });
+              entry.variants.push({ name: r.variantName, colorCode: r.colorCode, totalCartons: r.variantCartons });
+              entry.hasVariants = true;
+            }
+            if (r.totalCartons > entry.totalCartons) {
+              entry.totalCartons = r.totalCartons;
             }
           }
 
           const createdProducts = [];
+          const errors = [];
           for (const [name, data] of productMap) {
-            const product = await prisma.product.create({
-              data: {
-                name: data.name, price: data.price, piecesPerCarton: data.piecesPerCarton,
-                colorCode: data.colorCode, lowStockThreshold: data.lowStockThreshold,
-                hasVariants: data.hasVariants && data.variants.length > 0
-              }
-            });
-            if (data.hasVariants && data.variants.length > 0) {
-              for (const v of data.variants) {
-                const variant = await prisma.variant.create({
-                  data: { productId: product.id, name: v.name }
-                });
-                const vPieces = v.totalCartons * data.piecesPerCarton;
-                await prisma.variantInventory.create({
+            try {
+              const hasVariants = data.hasVariants && data.variants.length > 0;
+              const product = await prisma.product.create({
+                data: {
+                  name: data.name, price: data.price, piecesPerCarton: data.piecesPerCarton,
+                  colorCode: data.colorCode, lowStockThreshold: data.lowStockThreshold,
+                  hasVariants
+                }
+              });
+              if (hasVariants) {
+                for (const v of data.variants) {
+                  const variant = await prisma.variant.create({
+                    data: { productId: product.id, name: v.name, colorCode: v.colorCode || null }
+                  });
+                  const vPieces = (v.totalCartons || 0) * data.piecesPerCarton;
+                  await prisma.variantInventory.create({
+                    data: {
+                      variantId: variant.id, totalCartons: v.totalCartons || 0,
+                      remainingCartons: v.totalCartons || 0, totalPieces: vPieces, remainingPieces: vPieces
+                    }
+                  });
+                }
+              } else {
+                const totalPieces = (data.totalCartons || 0) * data.piecesPerCarton;
+                await prisma.inventory.create({
                   data: {
-                    variantId: variant.id, totalCartons: v.totalCartons,
-                    remainingCartons: v.totalCartons, totalPieces: vPieces, remainingPieces: vPieces
+                    productId: product.id, totalCartons: data.totalCartons || 0,
+                    remainingCartons: data.totalCartons || 0, totalPieces, remainingPieces: totalPieces
                   }
                 });
               }
-            } else {
-              const totalPieces = data.totalCartons * data.piecesPerCarton;
-              await prisma.inventory.create({
-                data: {
-                  productId: product.id, totalCartons: data.totalCartons,
-                  remainingCartons: data.totalCartons, totalPieces, remainingPieces: totalPieces
-                }
-              });
+              createdProducts.push(product);
+            } catch (err) {
+              errors.push(`Product "${name}": ${err.message}`);
             }
-            createdProducts.push(product);
           }
           fs.unlinkSync(req.file.path);
           res.status(201).json({
@@ -783,5 +799,11 @@ if (process.env.NODE_ENV === 'production' || fs.existsSync(path.join(__dirname, 
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
-  await createDefaultManager();
+  try {
+    await prisma.$connect();
+    console.log('Database connected successfully');
+    await createDefaultManager();
+  } catch (err) {
+    console.error('Database connection failed:', err.message);
+  }
 });
