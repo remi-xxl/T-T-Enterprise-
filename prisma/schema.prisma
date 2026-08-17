@@ -100,7 +100,7 @@ model SaleItem {
   quantity    Int
   saleType    String
   pricingMethod String @default("per_piece")
-  listPrice   Float
+  listPrice   Float   @default(0)
   unitPrice   Float
   totalPrice  Float
   priceAdjusted Boolean @default(false)
