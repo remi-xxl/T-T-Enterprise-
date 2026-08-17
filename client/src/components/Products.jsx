@@ -8,6 +8,7 @@ function Products() {
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [showVariantModal, setShowVariantModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [stockChanged, setStockChanged] = useState(false)
   const [addingVariantTo, setAddingVariantTo] = useState(null)
   const [bulkFile, setBulkFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -15,10 +16,10 @@ function Products() {
   const fileInputRef = useRef(null)
   const [formData, setFormData] = useState({
     name: '', price: '', piecesPerCarton: '', colorCode: '',
-    lowStockThreshold: '5', totalCartons: '', hasVariants: false
+    lowStockThreshold: '5', totalCartons: '', totalPieces: '', hasVariants: false
   })
-  const [variants, setVariants] = useState([{ name: '', colorCode: '', totalCartons: '' }])
-  const [variantForm, setVariantForm] = useState({ name: '', colorCode: '', totalCartons: '' })
+  const [variants, setVariants] = useState([{ name: '', colorCode: '', totalCartons: '', totalPieces: '' }])
+  const [variantForm, setVariantForm] = useState({ name: '', colorCode: '', totalCartons: '', totalPieces: '' })
 
   useEffect(() => { fetchProducts() }, [])
 
@@ -43,12 +44,14 @@ function Products() {
         colorCode: formData.colorCode || null,
         lowStockThreshold: parseInt(formData.lowStockThreshold),
         hasVariants: formData.hasVariants,
-        totalCartons: parseInt(formData.totalCartons) || 0,
+        totalCartons: editingProduct && !stockChanged ? undefined : (formData.totalCartons === '' ? undefined : parseInt(formData.totalCartons)),
+        totalPieces: editingProduct && !stockChanged ? undefined : (formData.totalPieces === '' ? undefined : parseInt(formData.totalPieces)),
         variants: formData.hasVariants
           ? variants.filter(v => v.name).map(v => ({
               name: v.name,
               colorCode: v.colorCode || null,
-              totalCartons: parseInt(v.totalCartons) || 0
+              totalCartons: parseInt(v.totalCartons) || 0,
+              totalPieces: v.totalPieces === '' ? undefined : parseInt(v.totalPieces)
             }))
           : []
       }
@@ -68,19 +71,21 @@ function Products() {
   const resetForm = () => {
     setShowModal(false)
     setEditingProduct(null)
-    setFormData({ name: '', price: '', piecesPerCarton: '', colorCode: '', lowStockThreshold: '5', totalCartons: '', hasVariants: false })
-    setVariants([{ name: '', colorCode: '', totalCartons: '' }])
+    setStockChanged(false)
+    setFormData({ name: '', price: '', piecesPerCarton: '', colorCode: '', lowStockThreshold: '5', totalCartons: '', totalPieces: '', hasVariants: false })
+    setVariants([{ name: '', colorCode: '', totalCartons: '', totalPieces: '' }])
   }
 
   const handleEdit = (product) => {
     setEditingProduct(product)
+    setStockChanged(false)
     setFormData({
       name: product.name,
       price: product.price.toString(),
       piecesPerCarton: product.piecesPerCarton.toString(),
       colorCode: product.colorCode || '',
       lowStockThreshold: product.lowStockThreshold.toString(),
-      totalCartons: '',
+      totalCartons: product.inventory?.totalCartons?.toString() || '', totalPieces: '',
       hasVariants: product.hasVariants
     })
     setShowModal(true)
@@ -116,11 +121,12 @@ function Products() {
       await axios.post(`/api/products/${addingVariantTo.id}/variants`, {
         name: variantForm.name,
         colorCode: variantForm.colorCode || null,
-        totalCartons: parseInt(variantForm.totalCartons) || 0
+        totalCartons: parseInt(variantForm.totalCartons) || 0,
+        totalPieces: variantForm.totalPieces === '' ? undefined : parseInt(variantForm.totalPieces)
       })
       setShowVariantModal(false)
       setAddingVariantTo(null)
-      setVariantForm({ name: '', colorCode: '', totalCartons: '' })
+      setVariantForm({ name: '', colorCode: '', totalCartons: '', totalPieces: '' })
       fetchProducts()
     } catch (error) {
       alert('Error adding variant: ' + (error.response?.data?.error || error.message))
@@ -342,13 +348,14 @@ function Products() {
                 <label htmlFor="hasVariants" className="text-sm font-medium text-gray-700">This product has variants (e.g. different colors)</label>
               </div>
 
-              {!editingProduct && (
-                <>
-                  {formData.hasVariants ? (
+              {formData.hasVariants ? (
+                editingProduct ? (
+                  <p className="text-sm text-gray-500 bg-gray-50 rounded p-3">To update a variant's cartons or pieces, use the Inventory page and edit that specific variant.</p>
+                ) : (
                     <div className="border rounded-lg p-4 space-y-3">
                       <div className="flex justify-between items-center">
                         <h4 className="font-medium text-gray-900">Variants</h4>
-                        <button type="button" onClick={() => setVariants([...variants, { name: '', colorCode: '', totalCartons: '' }])}
+                        <button type="button" onClick={() => setVariants([...variants, { name: '', colorCode: '', totalCartons: '', totalPieces: '' }])}
                           className="text-sm text-indigo-600 hover:text-indigo-800">+ Add Variant</button>
                       </div>
                       {variants.map((v, i) => (
@@ -371,19 +378,28 @@ function Products() {
                               onChange={(e) => { const nv = [...variants]; nv[i].totalCartons = e.target.value; setVariants(nv) }}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
+                          <div className="w-20">
+                            <label className="block text-xs text-gray-500">Pieces</label>
+                            <input type="number" min="0" value={v.totalPieces}
+                              onChange={(e) => { const nv = [...variants]; nv[i].totalPieces = e.target.value; setVariants(nv) }}
+                              className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
+                          </div>
                           {variants.length > 1 && (
                             <button type="button" onClick={() => setVariants(variants.filter((_, j) => j !== i))} className="text-red-600 text-sm">X</button>
                           )}
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Initial Cartons *</label>
-                      <input type="number" required value={formData.totalCartons} onChange={(e) => setFormData({ ...formData, totalCartons: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
-                    </div>
-                  )}
-                </>
+                )
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{editingProduct ? 'Total Stock' : 'Initial Stock'}</label>
+                  <div className="grid grid-cols-2 gap-3 mt-1">
+                    <input type="number" min="0" value={formData.totalCartons} onChange={(e) => { setStockChanged(true); setFormData({ ...formData, totalCartons: e.target.value }) }} placeholder="Cartons" className="block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                    <input type="number" min="0" value={formData.totalPieces} onChange={(e) => { setStockChanged(true); setFormData({ ...formData, totalPieces: e.target.value }) }} placeholder="Pieces (overrides cartons)" className="block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                  </div>
+                  {editingProduct && <p className="mt-1 text-xs text-gray-500">Leave the pieces box empty to update by cartons; enter pieces to set an exact quantity.</p>}
+                </div>
               )}
 
               <div className="flex justify-end space-x-3 pt-4">
@@ -400,7 +416,7 @@ function Products() {
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add Variant to {addingVariantTo.name}</h3>
-              <button onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '' }) }} className="text-gray-400 hover:text-gray-600">X</button>
+              <button onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '', totalPieces: '' }) }} className="text-gray-400 hover:text-gray-600">X</button>
             </div>
             <form onSubmit={handleAddVariant} className="space-y-4">
               <div>
@@ -413,10 +429,14 @@ function Products() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Initial Cartons</label>
-                <input type="number" value={variantForm.totalCartons} onChange={(e) => setVariantForm({ ...variantForm, totalCartons: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                <input type="number" min="0" value={variantForm.totalCartons} onChange={(e) => setVariantForm({ ...variantForm, totalCartons: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Initial Pieces</label>
+                <input type="number" min="0" value={variantForm.totalPieces} onChange={(e) => setVariantForm({ ...variantForm, totalPieces: e.target.value })} placeholder="Use this for loose pieces; it overrides cartons" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
               </div>
               <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '' }) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '', totalPieces: '' }) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">Add Variant</button>
               </div>
             </form>

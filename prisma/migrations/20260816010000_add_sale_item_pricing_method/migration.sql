@@ -1,0 +1,1 @@
+ALTER TABLE "SaleItem" ADD COLUMN IF NOT EXISTS "pricingMethod" TEXT NOT NULL DEFAULT 'per_piece';

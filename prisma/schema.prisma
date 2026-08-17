@@ -99,7 +99,10 @@ model SaleItem {
   variant     Variant? @relation(fields: [variantId], references: [id])
   quantity    Int
   saleType    String
+  pricingMethod String @default("per_piece")
+  listPrice   Float
   unitPrice   Float
   totalPrice  Float
+  priceAdjusted Boolean @default(false)
   productName String?
 }

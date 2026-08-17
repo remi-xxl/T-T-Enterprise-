@@ -16,6 +16,10 @@ function WholesaleSales() {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [selectedRepId, setSelectedRepId] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [filteredCustomers, setFilteredCustomers] = useState([])
+  const customerDropdownRef = useRef(null)
   const [productSearch, setProductSearch] = useState('')
   const [showProductDropdown, setShowProductDropdown] = useState(false)
   const [filteredProducts, setFilteredProducts] = useState([])
@@ -23,7 +27,7 @@ function WholesaleSales() {
   const productDropdownRef = useRef(null)
   const [formData, setFormData] = useState({ paymentMode: 'cash', notes: '' })
   const [saleItems, setSaleItems] = useState([
-    { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, totalPrice: 0 }
+    { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0 }
   ])
   const [customerForm, setCustomerForm] = useState({ name: '', phone: '', address: '' })
   const [filterDate, setFilterDate] = useState({ startDate: '', endDate: '' })
@@ -52,6 +56,39 @@ function WholesaleSales() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (customerSearch.trim() === '') setFilteredCustomers(customers)
+    else {
+      const search = customerSearch.toLowerCase()
+      setFilteredCustomers(customers.filter(c =>
+        c.name.toLowerCase().includes(search) ||
+        (c.phone && c.phone.toLowerCase().includes(search))
+      ))
+    }
+  }, [customerSearch, customers])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target)) {
+        setShowCustomerDropdown(false)
+        if (selectedCustomerId) {
+          const selected = customers.find(c => c.id.toString() === selectedCustomerId)
+          setCustomerSearch(selected ? selected.name : '')
+        } else {
+          setCustomerSearch('')
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [customers, selectedCustomerId])
+
+  const handleCustomerSelect = (cust) => {
+    setSelectedCustomerId(cust.id.toString())
+    setCustomerSearch(cust.name)
+    setShowCustomerDropdown(false)
+  }
 
   const fetchData = async () => {
     try {
@@ -83,6 +120,17 @@ function WholesaleSales() {
     setActiveItemIndex(null)
   }
 
+  const handleProductSearchChange = (index, value) => {
+    setProductSearch(value)
+    setActiveItemIndex(index)
+    setShowProductDropdown(true)
+    if (value === '') {
+      const newItems = [...saleItems]
+      newItems[index] = { ...newItems[index], productId: '', productName: '', variantId: '', variantName: '' }
+      setSaleItems(newItems)
+    }
+  }
+
   const handleVariantSelect = (variantId, index) => {
     const newItems = [...saleItems]
     const product = products.find(p => p.id === parseInt(newItems[index].productId))
@@ -97,18 +145,23 @@ function WholesaleSales() {
     const product = products.find(p => p.id === parseInt(item.productId))
     if (!product) return
     const qty = parseInt(item.quantity)
-    items[index].totalPrice = item.saleType === 'carton' ? qty * product.price * product.piecesPerCarton : qty * product.price
+    const unitPrice = Number(item.unitPrice)
+    items[index].totalPrice = item.pricingMethod === 'line_total'
+      ? (Number(item.lineTotal) || 0)
+      : Number.isFinite(unitPrice) && unitPrice > 0
+      ? (item.saleType === 'carton' ? qty * unitPrice * product.piecesPerCarton : qty * unitPrice)
+      : 0
   }
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...saleItems]
     newItems[index] = { ...newItems[index], [field]: value }
-    if (field === 'quantity' || field === 'saleType') recalculateItem(newItems[index], index, newItems)
+    if (field === 'quantity' || field === 'saleType' || field === 'unitPrice' || field === 'lineTotal' || field === 'pricingMethod') recalculateItem(newItems[index], index, newItems)
     setSaleItems(newItems)
   }
 
   const addItem = () => {
-    setSaleItems([...saleItems, { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, totalPrice: 0 }])
+    setSaleItems([...saleItems, { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0 }])
   }
 
   const removeItem = (index) => {
@@ -132,7 +185,6 @@ function WholesaleSales() {
     e.preventDefault()
     try {
       if (!selectedRepId) { alert('Please select a sales rep'); return }
-      if (!selectedCustomerId) { alert('Please select a customer'); return }
       const validItems = saleItems.filter(item => item.productId && item.quantity)
       if (validItems.length === 0) { alert('Please add at least one product'); return }
 
@@ -152,7 +204,10 @@ function WholesaleSales() {
           productId: parseInt(item.productId),
           variantId: item.variantId ? parseInt(item.variantId) : null,
           quantity: parseInt(item.quantity),
-          saleType: item.saleType
+          saleType: item.saleType,
+          unitPrice: Number(item.unitPrice),
+          lineTotal: Number(item.lineTotal),
+          pricingMethod: item.pricingMethod
         }))
       })
       setShowModal(false)
@@ -165,9 +220,73 @@ function WholesaleSales() {
 
   const resetForm = () => {
     setFormData({ paymentMode: 'cash', notes: '' })
-    setSaleItems([{ productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, totalPrice: 0 }])
+    setSaleItems([{ productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0 }])
     setSelectedCustomerId('')
+    setCustomerSearch('')
     setProductSearch('')
+  }
+
+  const printReceipt = (sale) => {
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    document.body.appendChild(iframe)
+    const doc = iframe.contentWindow.document
+    const itemsRows = sale.items.map((it, i) => `
+      <tr>
+        <td style="padding:4px 8px;border-bottom:1px solid #eee;">${i + 1}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #eee;">${it.productName}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:center;">${it.quantity} ${it.saleType}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;">N${Number(it.totalPrice).toLocaleString()}</td>
+      </tr>`).join('')
+    doc.open()
+    doc.write(`<!DOCTYPE html><html><head><title>Wholesale Receipt #${sale.id}</title>
+      <style>
+        body { font-family: 'Courier New', monospace; padding: 20px; color: #000; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .line { border-top: 1px dashed #000; margin: 10px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .total { font-size: 16px; }
+      </style></head>
+      <body>
+        <div class="center bold" style="font-size:18px;">T&amp;T ENTERPRISES</div>
+        <div class="center">Wholesale Receipt</div>
+        <div class="line"></div>
+        <div>Receipt #: ${sale.id}</div>
+        <div>Date: ${new Date(sale.saleDate).toLocaleString()}</div>
+        <div>Customer: ${sale.customer ? sale.customer.name : 'Walk-in / Unspecified'}</div>
+        <div>Sold By: ${sale.user ? sale.user.name : '-'}</div>
+        <div>Payment: ${sale.paymentMode.charAt(0).toUpperCase() + sale.paymentMode.slice(1)}</div>
+        <div class="line"></div>
+        <table>
+          <thead>
+            <tr class="bold">
+              <th style="text-align:left;padding:4px 8px;">#</th>
+              <th style="text-align:left;padding:4px 8px;">Item</th>
+              <th style="text-align:center;padding:4px 8px;">Qty</th>
+              <th style="text-align:right;padding:4px 8px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>${itemsRows}</tbody>
+        </table>
+        <div class="line"></div>
+        <div class="bold total" style="display:flex;justify-content:space-between;">
+          <span>TOTAL</span><span>N${Number(sale.totalAmount).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;"><span>Total Pieces</span><span>${sale.totalQuantity}</span></div>
+        ${sale.notes ? `<div class="line"></div><div>Notes: ${sale.notes}</div>` : ''}
+        <div class="line"></div>
+        <div class="center">Thank you for your business!</div>
+      </body></html>`)
+    doc.close()
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
+    setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe) }, 1000)
   }
 
   const handleFilter = async () => {
@@ -221,6 +340,20 @@ function WholesaleSales() {
     return item.saleType === 'carton' ? (product.inventory?.remainingCartons || 0) : (product.inventory?.remainingPieces || 0)
   }
 
+  const isPriceAdjusted = (item) => {
+    const product = products.find(p => p.id === parseInt(item.productId))
+    if (!product || !item.quantity) return false
+    const qty = parseInt(item.quantity)
+    let unit
+    if (item.pricingMethod === 'line_total') {
+      const pieces = item.saleType === 'carton' ? qty * (product.piecesPerCarton || 1) : qty
+      unit = pieces > 0 ? (Number(item.lineTotal) || 0) / pieces : 0
+    } else {
+      unit = Number(item.unitPrice) || 0
+    }
+    return Math.abs(unit - (product.price || 0)) > 0.01
+  }
+
   const salesByCustomer = sales.reduce((acc, sale) => {
     const custName = sale.customer?.name || 'Unknown'
     if (!acc[custName]) acc[custName] = { customer: sale.customer, sales: [], total: 0, items: 0 }
@@ -234,9 +367,9 @@ function WholesaleSales() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Wholesale Sales</h1>
-        <div className="flex space-x-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:space-x-3">
           <button onClick={() => setShowCustomerModal(true)} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">+ Add Customer</button>
           <button onClick={() => setShowModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ New Wholesale Sale</button>
         </div>
@@ -297,6 +430,7 @@ function WholesaleSales() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                 {isManager && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sold By</th>}
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -305,19 +439,29 @@ function WholesaleSales() {
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{new Date(sale.saleDate).toLocaleDateString()}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{sale.customer?.name || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    <div className="flex flex-wrap gap-1">
-                      {sale.items?.slice(0, 3).map((item, idx) => (
-                        <span key={idx} className={`px-2 py-1 rounded text-xs ${!item.product ? 'bg-gray-200 italic' : 'bg-gray-100'}`}>
-                          {item.product?.name || item.productName || 'Deleted'}{item.variant ? ` (${item.variant.name})` : ''} x{item.quantity}
-                        </span>
+                    <div className="space-y-1">
+                      {sale.items?.map((item, idx) => (
+                        <div key={idx} className={!item.product ? 'italic text-gray-400' : ''}>
+                          <span className="font-medium">{item.product?.name || item.productName || 'Deleted'}</span>
+                          {item.variant && <span className="text-indigo-600 ml-1">({item.variant.name})</span>}
+                          <span className="text-gray-500 ml-1">— {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} @ N{Number(item.totalPrice).toLocaleString()}</span>
+                          {item.priceAdjusted && <span className="ml-1 px-1 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adj</span>}
+                        </div>
                       ))}
-                      {sale.items?.length > 3 && <span className="bg-gray-100 px-2 py-1 rounded text-xs">+{sale.items.length - 3} more</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{sale.totalQuantity}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    {sale.items?.map((item, idx) => (
+                      <div key={idx} className="mb-1">{item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''}</div>
+                    ))}
+                    <div className="text-xs text-gray-400">Total: {sale.totalQuantity} pcs</div>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">{getPaymentBadge(sale.paymentMode)}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-green-600">N{sale.totalAmount.toLocaleString()}</td>
                   {isManager && <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{sale.user?.name || '-'}</td>}
+                  <td className="px-4 py-3 whitespace-nowrap text-sm">
+                    <button type="button" onClick={() => printReceipt(sale)} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700">Print</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -328,13 +472,13 @@ function WholesaleSales() {
 
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-5 mx-auto p-5 border w-[750px] shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+          <div className="relative mx-auto my-3 w-full max-w-4xl rounded-md border bg-white p-4 shadow-lg sm:my-6 sm:p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">New Wholesale Sale</h3>
               <button onClick={() => { setShowModal(false); resetForm() }} className="text-gray-400 hover:text-gray-600">X</button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Sales Rep *</label>
                   <select required value={selectedRepId} onChange={(e) => setSelectedRepId(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
@@ -343,12 +487,31 @@ function WholesaleSales() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer *</label>
-                  <div className="flex space-x-2">
-                    <select required value={selectedCustomerId} onChange={(e) => setSelectedCustomerId(e.target.value)} className="flex-1 border border-gray-300 rounded-md shadow-sm p-2">
-                      <option value="">Select customer</option>
-                      {customers.map((cust) => <option key={cust.id} value={cust.id}>{cust.name}</option>)}
-                    </select>
+                  <label className="block text-sm font-medium text-gray-700">Customer <span className="text-gray-400">(optional)</span></label>
+                  <div className="flex gap-2">
+                    <div className="relative min-w-0 flex-1" ref={customerDropdownRef}>
+                      <div className="flex gap-2">
+                        <input type="text" value={customerSearch} autoComplete="off"
+                          onChange={(e) => { setCustomerSearch(e.target.value); setShowCustomerDropdown(true); if (!e.target.value) setSelectedCustomerId('') }}
+                          onFocus={() => { setShowCustomerDropdown(true) }}
+                          placeholder="Search customer..." className="min-w-0 flex-1 border border-gray-300 rounded-md shadow-sm p-2" />
+                        <button type="button" onClick={() => setShowCustomerDropdown(v => !v)} className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Search</button>
+                      </div>
+                      {showCustomerDropdown && (
+                        <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
+                          {filteredCustomers.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">No customers found</div>
+                          ) : (
+                            filteredCustomers.map((cust) => (
+                              <div key={cust.id} onClick={() => handleCustomerSelect(cust)} className={`px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm ${selectedCustomerId === cust.id.toString() ? 'bg-indigo-50' : ''}`}>
+                                <div className="font-medium">{cust.name}</div>
+                                {cust.phone && <div className="text-xs text-gray-500">{cust.phone}</div>}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <button type="button" onClick={() => setShowCustomerModal(true)} className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">+ New</button>
                   </div>
                 </div>
@@ -372,15 +535,15 @@ function WholesaleSales() {
                   {saleItems.map((item, index) => {
                     const product = products.find(p => p.id === parseInt(item.productId))
                     return (
-                      <div key={index} className="flex items-end space-x-2 bg-gray-50 p-3 rounded-lg">
-                        <div className="flex-1 relative" ref={activeItemIndex === index ? productDropdownRef : null}>
+                      <div key={index} className={`relative grid grid-cols-1 gap-3 rounded-lg bg-gray-50 p-3 sm:grid-cols-2 lg:grid-cols-6 ${activeItemIndex === index ? 'z-20' : 'z-0'}`}>
+                        <div className="relative min-w-0 lg:col-span-2" ref={activeItemIndex === index ? productDropdownRef : null}>
                           <label className="block text-xs text-gray-500">Product *</label>
-                          <input type="text" required value={item.productName || (activeItemIndex === index ? productSearch : '')}
-                            onChange={(e) => { setProductSearch(e.target.value); setActiveItemIndex(index); setShowProductDropdown(true); if (e.target.value === '') handleItemChange(index, 'productId', '') }}
+                          <input type="text" required value={activeItemIndex === index ? productSearch : item.productName}
+                            onChange={(e) => handleProductSearchChange(index, e.target.value)}
                             onFocus={() => { setActiveItemIndex(index); setShowProductDropdown(true); setProductSearch(item.productName || '') }}
                             placeholder="Search product..." className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" autoComplete="off" />
                           {showProductDropdown && activeItemIndex === index && filteredProducts.length > 0 && (
-                            <div className="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto">
+                            <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
                               {filteredProducts.map((product) => (
                                 <div key={product.id} onClick={() => handleProductSelect(product, index)} className="px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm">
                                   <div className="flex justify-between">
@@ -397,7 +560,7 @@ function WholesaleSales() {
                         </div>
 
                         {product?.hasVariants && (
-                          <div className="w-36">
+                          <div className="min-w-0">
                             <label className="block text-xs text-gray-500">Variant *</label>
                             <select required value={item.variantId} onChange={(e) => handleVariantSelect(e.target.value, index)}
                               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
@@ -409,26 +572,43 @@ function WholesaleSales() {
                           </div>
                         )}
 
-                        <div className="w-24">
+                        <div className="min-w-0">
                           <label className="block text-xs text-gray-500">Type *</label>
                           <select value={item.saleType} onChange={(e) => handleItemChange(index, 'saleType', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
                             <option value="piece">Piece</option>
                             <option value="carton">Carton</option>
                           </select>
                         </div>
-                        <div className="w-24">
+                        <div className="min-w-0">
+                          <label className="block text-xs text-gray-500">Price Method *</label>
+                          <select value={item.pricingMethod} onChange={(e) => handleItemChange(index, 'pricingMethod', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
+                            <option value="per_piece">Per piece</option>
+                            <option value="line_total">Set total</option>
+                          </select>
+                        </div>
+                        <div className="min-w-0">
+                          <label className="flex items-center gap-1 text-xs text-gray-500">
+                            {item.pricingMethod === 'line_total' ? 'Final total *' : 'Price / pc *'}
+                            {isPriceAdjusted(item) && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adjusted</span>
+                            )}
+                          </label>
+                          <input type="number" required min="0.01" step="0.01" value={item.pricingMethod === 'line_total' ? item.lineTotal : item.unitPrice} onChange={(e) => handleItemChange(index, item.pricingMethod === 'line_total' ? 'lineTotal' : 'unitPrice', e.target.value)} className={`mt-1 block w-full border rounded-md shadow-sm p-2 text-sm ${isPriceAdjusted(item) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`} />
+                          {product && <span className="text-xs text-gray-400">List: N{product.price.toLocaleString()}/pc</span>}
+                        </div>
+                        <div className="min-w-0">
                           <label className="block text-xs text-gray-500">Qty *</label>
                           <input type="number" required min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
                           {item.productId && (item.variantId || !product?.hasVariants) && (
                             <span className="text-xs text-gray-400">Avail: {getAvailableStock(item)}</span>
                           )}
                         </div>
-                        <div className="w-28">
+                        <div className="min-w-0">
                           <label className="block text-xs text-gray-500">Total</label>
                           <div className="mt-1 p-2 bg-gray-100 rounded-md text-sm font-medium text-green-600">N{(item.totalPrice || 0).toLocaleString()}</div>
                         </div>
                         {saleItems.length > 1 && (
-                          <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-600 hover:text-red-800">Remove</button>
+                          <button type="button" onClick={() => removeItem(index)} className="justify-self-start p-2 text-red-600 hover:text-red-800">Remove</button>
                         )}
                       </div>
                     )

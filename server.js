@@ -32,6 +32,38 @@ app.use(express.json());
 
 const upload = multer({ dest: 'uploads/' });
 
+// Pieces are the source of truth for stock.  Cartons are only a convenient
+// display/unit when a product is packed in complete cartons.
+function stockFromInput({ totalCartons, totalPieces }, piecesPerCarton) {
+  const hasPieceCount = totalPieces !== '' && totalPieces !== null && totalPieces !== undefined;
+  const pieces = Number(totalPieces);
+  if (hasPieceCount && Number.isInteger(pieces) && pieces >= 0) {
+    return { totalPieces: pieces, totalCartons: Math.floor(pieces / piecesPerCarton) };
+  }
+
+  const cartons = Number(totalCartons);
+  const safeCartons = Number.isInteger(cartons) && cartons >= 0 ? cartons : 0;
+  return { totalPieces: safeCartons * piecesPerCarton, totalCartons: safeCartons };
+}
+
+function calculateSalePricing({ quantity, saleType, piecesPerCarton, unitPrice, lineTotal, pricingMethod }) {
+  const quantityNumber = Number(quantity);
+  const piecesSold = saleType === 'carton' ? quantityNumber * piecesPerCarton : quantityNumber;
+  if (!Number.isInteger(quantityNumber) || quantityNumber <= 0 || !Number.isFinite(piecesSold) || piecesSold <= 0) {
+    throw new Error('Enter a valid quantity');
+  }
+
+  if (pricingMethod === 'line_total') {
+    const totalPrice = Number(lineTotal);
+    if (!Number.isFinite(totalPrice) || totalPrice <= 0) throw new Error('Enter a valid total price for this quantity');
+    return { totalPrice, unitPrice: totalPrice / piecesSold, pricingMethod };
+  }
+
+  const actualUnitPrice = Number(unitPrice);
+  if (!Number.isFinite(actualUnitPrice) || actualUnitPrice <= 0) throw new Error('Enter a valid selling price');
+  return { totalPrice: piecesSold * actualUnitPrice, unitPrice: actualUnitPrice, pricingMethod: 'per_piece' };
+}
+
 app.post('/api/auth/manager-login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -50,7 +82,7 @@ async function createDefaultManager() {
     const existingManager = await prisma.user.findFirst({ where: { role: 'MANAGER' } });
     if (!existingManager) {
       const hashedPassword = await bcrypt.hash('admin123', 10);
-      await prisma.user.create({
+      await prisma.user.create({ 
         data: { name: 'Admin', email: 'admin@store.com', password: hashedPassword, role: 'MANAGER' }
       });
       console.log('Default manager created: admin@store.com / admin123');
@@ -127,7 +159,7 @@ app.get('/api/products', async (req, res) => {
 
 app.post('/api/products', async (req, res) => {
   try {
-    const { name, price, piecesPerCarton, colorCode, lowStockThreshold, totalCartons, hasVariants, variants } = req.body;
+    const { name, price, piecesPerCarton, colorCode, lowStockThreshold, totalCartons, totalPieces, hasVariants, variants } = req.body;
     const product = await prisma.product.create({
       data: {
         name, price, piecesPerCarton, colorCode,
@@ -141,21 +173,20 @@ app.post('/api/products', async (req, res) => {
         const variant = await prisma.variant.create({
           data: { productId: product.id, name: v.name, colorCode: v.colorCode || null }
         });
-        const vCartons = v.totalCartons || 0;
-        const vPieces = vCartons * piecesPerCarton;
+        const stock = stockFromInput(v, piecesPerCarton);
         await prisma.variantInventory.create({
           data: {
-            variantId: variant.id, totalCartons: vCartons,
-            remainingCartons: vCartons, totalPieces: vPieces, remainingPieces: vPieces
+            variantId: variant.id, totalCartons: stock.totalCartons,
+            remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
           }
         });
       }
     } else {
-      const totalPieces = (totalCartons || 0) * piecesPerCarton;
+      const stock = stockFromInput({ totalCartons, totalPieces }, piecesPerCarton);
       await prisma.inventory.create({
         data: {
-          productId: product.id, totalCartons: totalCartons || 0,
-          remainingCartons: totalCartons || 0, totalPieces, remainingPieces: totalPieces
+          productId: product.id, totalCartons: stock.totalCartons,
+          remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
         }
       });
     }
@@ -173,10 +204,39 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, piecesPerCarton, colorCode, lowStockThreshold } = req.body;
-    const product = await prisma.product.update({
-      where: { id: parseInt(id) },
-      data: { name, price, piecesPerCarton, colorCode, lowStockThreshold }
+    const { name, price, piecesPerCarton, colorCode, lowStockThreshold, totalCartons, totalPieces } = req.body;
+    const stockWasProvided = totalCartons !== '' && totalCartons !== null && totalCartons !== undefined ||
+      totalPieces !== '' && totalPieces !== null && totalPieces !== undefined;
+
+    const product = await prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id: parseInt(id) },
+        data: { name, price, piecesPerCarton, colorCode, lowStockThreshold }
+      });
+
+      // Variant quantities are managed per variant; single-product stock can
+      // be updated directly from this form in either cartons or pieces.
+      if (!updated.hasVariants) {
+        const inventory = await tx.inventory.findUnique({ where: { productId: updated.id } });
+        if (inventory) {
+          const stock = stockWasProvided
+            ? stockFromInput({ totalCartons, totalPieces }, updated.piecesPerCarton)
+            : { totalPieces: inventory.totalPieces, totalCartons: Math.floor(inventory.totalPieces / updated.piecesPerCarton) };
+          const remainingPieces = stockWasProvided
+            ? Math.max(0, inventory.remainingPieces + stock.totalPieces - inventory.totalPieces)
+            : inventory.remainingPieces;
+          await tx.inventory.update({
+            where: { productId: updated.id },
+            data: {
+              totalCartons: stock.totalCartons,
+              totalPieces: stock.totalPieces,
+              remainingPieces,
+              remainingCartons: Math.floor(remainingPieces / updated.piecesPerCarton)
+            }
+          });
+        }
+      }
+      return updated;
     });
     res.json(product);
   } catch (error) {
@@ -220,17 +280,17 @@ app.delete('/api/products', async (req, res) => {
 app.post('/api/products/:productId/variants', async (req, res) => {
   try {
     const { productId } = req.params;
-    const { name, colorCode, totalCartons } = req.body;
+    const { name, colorCode, totalCartons, totalPieces } = req.body;
     const product = await prisma.product.findUnique({ where: { id: parseInt(productId) } });
     if (!product) return res.status(404).json({ error: 'Product not found' });
     const variant = await prisma.variant.create({
       data: { productId: parseInt(productId), name, colorCode: colorCode || null }
     });
-    const totalPieces = (totalCartons || 0) * product.piecesPerCarton;
+    const stock = stockFromInput({ totalCartons, totalPieces }, product.piecesPerCarton);
     await prisma.variantInventory.create({
       data: {
-        variantId: variant.id, totalCartons: totalCartons || 0,
-        remainingCartons: totalCartons || 0, totalPieces, remainingPieces: totalPieces
+        variantId: variant.id, totalCartons: stock.totalCartons,
+        remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
       }
     });
     const result = await prisma.variant.findUnique({ where: { id: variant.id }, include: { inventory: true } });
@@ -269,18 +329,18 @@ app.delete('/api/variants/:id', async (req, res) => {
 app.put('/api/inventory/:productId', async (req, res) => {
   try {
     const { productId } = req.params;
-    const { totalCartons } = req.body;
+    const { totalCartons, totalPieces } = req.body;
     const inventory = await prisma.inventory.findUnique({ where: { productId: parseInt(productId) } });
     if (!inventory) return res.status(404).json({ error: 'Inventory not found' });
     const product = await prisma.product.findUnique({ where: { id: parseInt(productId) } });
-    const newTotalPieces = totalCartons * product.piecesPerCarton;
-    const cartonsDiff = totalCartons - inventory.totalCartons;
+    const stock = stockFromInput({ totalCartons, totalPieces }, product.piecesPerCarton);
+    const piecesDiff = stock.totalPieces - inventory.totalPieces;
     const updated = await prisma.inventory.update({
       where: { productId: parseInt(productId) },
       data: {
-        totalCartons, totalPieces: newTotalPieces,
-        remainingCartons: Math.max(0, inventory.remainingCartons + cartonsDiff),
-        remainingPieces: Math.max(0, inventory.remainingPieces + (cartonsDiff * product.piecesPerCarton))
+        totalCartons: stock.totalCartons, totalPieces: stock.totalPieces,
+        remainingPieces: Math.max(0, inventory.remainingPieces + piecesDiff),
+        remainingCartons: Math.floor(Math.max(0, inventory.remainingPieces + piecesDiff) / product.piecesPerCarton)
       }
     });
     res.json(updated);
@@ -292,19 +352,19 @@ app.put('/api/inventory/:productId', async (req, res) => {
 app.put('/api/variant-inventory/:variantId', async (req, res) => {
   try {
     const { variantId } = req.params;
-    const { totalCartons } = req.body;
+    const { totalCartons, totalPieces } = req.body;
     const vInv = await prisma.variantInventory.findUnique({ where: { variantId: parseInt(variantId) } });
     if (!vInv) return res.status(404).json({ error: 'Variant inventory not found' });
     const variant = await prisma.variant.findUnique({ where: { id: parseInt(variantId) } });
     const product = await prisma.product.findUnique({ where: { id: variant.productId } });
-    const newTotalPieces = totalCartons * product.piecesPerCarton;
-    const cartonsDiff = totalCartons - vInv.totalCartons;
+    const stock = stockFromInput({ totalCartons, totalPieces }, product.piecesPerCarton);
+    const piecesDiff = stock.totalPieces - vInv.totalPieces;
     const updated = await prisma.variantInventory.update({
       where: { variantId: parseInt(variantId) },
       data: {
-        totalCartons, totalPieces: newTotalPieces,
-        remainingCartons: Math.max(0, vInv.remainingCartons + cartonsDiff),
-        remainingPieces: Math.max(0, vInv.remainingPieces + (cartonsDiff * product.piecesPerCarton))
+        totalCartons: stock.totalCartons, totalPieces: stock.totalPieces,
+        remainingPieces: Math.max(0, vInv.remainingPieces + piecesDiff),
+        remainingCartons: Math.floor(Math.max(0, vInv.remainingPieces + piecesDiff) / product.piecesPerCarton)
       }
     });
     res.json(updated);
@@ -326,13 +386,11 @@ async function deductInventory(productId, variantId, saleType, quantity, piecesP
       return piecesSold;
     } else {
       if (vInv.remainingPieces < quantity) throw new Error('Not enough pieces in stock');
-      const cartonsToDeduct = Math.floor(quantity / piecesPerCarton);
-      const remPieces = quantity % piecesPerCarton;
       await prisma.variantInventory.update({
         where: { variantId },
         data: {
           remainingPieces: vInv.remainingPieces - quantity,
-          remainingCartons: vInv.remainingCartons - cartonsToDeduct - (remPieces > 0 ? 1 : 0)
+          remainingCartons: Math.floor((vInv.remainingPieces - quantity) / piecesPerCarton)
         }
       });
       return quantity;
@@ -349,13 +407,11 @@ async function deductInventory(productId, variantId, saleType, quantity, piecesP
       return piecesSold;
     } else {
       if (inv.remainingPieces < quantity) throw new Error('Not enough pieces in stock');
-      const cartonsToDeduct = Math.floor(quantity / piecesPerCarton);
-      const remPieces = quantity % piecesPerCarton;
       await prisma.inventory.update({
         where: { productId },
         data: {
           remainingPieces: inv.remainingPieces - quantity,
-          remainingCartons: inv.remainingCartons - cartonsToDeduct - (remPieces > 0 ? 1 : 0)
+          remainingCartons: Math.floor((inv.remainingPieces - quantity) / piecesPerCarton)
         }
       });
       return quantity;
@@ -367,8 +423,10 @@ app.get('/api/sales', async (req, res) => {
   try {
     const { startDate, endDate, userId } = req.query;
     let where = {};
-    if (startDate && endDate) {
-      where.saleDate = { gte: new Date(startDate), lte: new Date(endDate + 'T23:59:59.999Z') };
+    if (startDate || endDate) {
+      where.saleDate = {};
+      if (startDate) where.saleDate.gte = new Date(`${startDate}T00:00:00.000Z`);
+      if (endDate) where.saleDate.lte = new Date(`${endDate}T23:59:59.999Z`);
     }
     if (userId) where.userId = parseInt(userId);
     const sales = await prisma.sale.findMany({
@@ -387,18 +445,17 @@ app.get('/api/sales', async (req, res) => {
 
 app.post('/api/sales', async (req, res) => {
   try {
-    const { productId, variantId, userId, quantity, saleType, paymentMode, notes } = req.body;
+    const { productId, variantId, userId, quantity, saleType, paymentMode, notes, unitPrice, lineTotal, pricingMethod } = req.body;
     const product = await prisma.product.findUnique({ where: { id: parseInt(productId) } });
     if (!product) return res.status(404).json({ error: 'Product not found' });
+    const pricing = calculateSalePricing({ quantity, saleType, piecesPerCarton: product.piecesPerCarton, unitPrice, lineTotal, pricingMethod });
     const vId = variantId ? parseInt(variantId) : null;
     if (vId) {
       const variant = await prisma.variant.findUnique({ where: { id: vId } });
       if (!variant) return res.status(404).json({ error: 'Variant not found' });
     }
     const piecesSold = await deductInventory(parseInt(productId), vId, saleType, quantity, product.piecesPerCarton);
-    const totalAmount = saleType === 'carton'
-      ? quantity * product.price * product.piecesPerCarton
-      : quantity * product.price;
+    const totalAmount = pricing.totalPrice;
 
     const variantLabel = vId ? (await prisma.variant.findUnique({ where: { id: vId } }))?.name : null;
 
@@ -410,7 +467,8 @@ app.post('/api/sales', async (req, res) => {
           create: [{
             productId: parseInt(productId), variantId: vId,
             productName: product.name + (variantLabel ? ` - ${variantLabel}` : ''),
-            quantity, saleType, unitPrice: product.price, totalPrice: totalAmount
+            quantity, saleType, pricingMethod: pricing.pricingMethod, listPrice: product.price,
+            unitPrice: pricing.unitPrice, totalPrice: totalAmount
           }]
         }
       },
@@ -617,23 +675,24 @@ app.post('/api/wholesale-sales', async (req, res) => {
     for (const item of items) {
       const product = await prisma.product.findUnique({ where: { id: item.productId } });
       if (!product) return res.status(400).json({ error: `Product not found: ${item.productId}` });
+      const pricing = calculateSalePricing({ ...item, piecesPerCarton: product.piecesPerCarton });
       const vId = item.variantId || null;
       if (vId) {
         const variant = await prisma.variant.findUnique({ where: { id: vId } });
         if (!variant) return res.status(400).json({ error: `Variant not found: ${vId}` });
       }
       const piecesSold = await deductInventory(item.productId, vId, item.saleType, item.quantity, product.piecesPerCarton);
-      const itemTotal = item.saleType === 'carton'
-        ? item.quantity * product.price * product.piecesPerCarton
-        : item.quantity * product.price;
+      const itemTotal = pricing.totalPrice;
       totalAmount += itemTotal;
       totalQuantity += piecesSold;
+      const effectivePerPiece = piecesSold > 0 ? itemTotal / piecesSold : 0;
+      const priceAdjusted = Math.abs(effectivePerPiece - product.price) > 0.01;
       const variantLabel = vId ? (await prisma.variant.findUnique({ where: { id: vId } }))?.name : null;
       saleItems.push({
         productId: item.productId, variantId: vId,
         productName: product.name + (variantLabel ? ` - ${variantLabel}` : ''),
-        quantity: item.quantity, saleType: item.saleType,
-        unitPrice: product.price, totalPrice: itemTotal
+        quantity: item.quantity, saleType: item.saleType, pricingMethod: pricing.pricingMethod,
+        listPrice: product.price, unitPrice: pricing.unitPrice, totalPrice: itemTotal, priceAdjusted
       });
     }
 
@@ -678,15 +737,50 @@ app.get('/api/customers/:id/purchases', async (req, res) => {
 });
 
 app.get('/api/products/template', (req, res) => {
-  const csvContent = 'name,price,piecesPerCarton,colorCode,lowStockThreshold,totalCartons,hasVariants,variantName,variantCartons,totalPieces\n' +
+  const csvContent = 'name,price,piecesPerCarton,colorCode,lowStockThreshold,totalCartons,totalPieces,hasVariants,variantName,variantCartons,variantPieces\n' +
     'Lush Wow Braid,500,25,,5,10\n' +
     'Ankara Fabric,1500,20,RED,3,5\n' +
-    'Lush Jumbo,800,30,,5,,true,Color 1,5\n' +
-    'Lush Jumbo,800,30,,5,,true,Gold,3\n' +
-    'Mega growth relax,1200,12,,,,,,,,5\n' +
-    'Karen Paris,1800,48,,,,,,,,10';  res.setHeader('Content-Type', 'text/csv');
+    'Lush Jumbo,800,30,,5,,,true,Color 33,1,\n' +
+    'Lush Jumbo,800,30,,5,,,true,Color 25,,15\n' +
+    'Mega growth relax,1200,12,,,5\n' +
+    'Karen Paris,1800,48,,,10';
+  res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename=products_template.csv');
   res.send(csvContent);
+});
+
+function csvCell(value) {
+  const text = value == null ? '' : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+app.get('/api/products/export', async (req, res) => {
+  try {
+    const products = await prisma.product.findMany({
+      include: { inventory: true, variants: { include: { inventory: true } } },
+      orderBy: { id: 'asc' }
+    });
+    const headers = ['name', 'price', 'piecesPerCarton', 'colorCode', 'lowStockThreshold', 'totalCartons', 'totalPieces', 'hasVariants', 'variantName', 'variantCartons', 'variantPieces'];
+    const rows = products.flatMap((product) => {
+      if (product.hasVariants) {
+        return product.variants.map((variant) => [
+          product.name, product.price, product.piecesPerCarton, variant.colorCode || product.colorCode,
+          product.lowStockThreshold, '', '', 'true', variant.name,
+          variant.inventory?.totalCartons ?? 0, variant.inventory?.totalPieces ?? 0
+        ]);
+      }
+      return [[
+        product.name, product.price, product.piecesPerCarton, product.colorCode, product.lowStockThreshold,
+        product.inventory?.totalCartons ?? 0, product.inventory?.totalPieces ?? 0, 'false', '', '', ''
+      ]];
+    });
+    const csvContent = [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=current_products.csv');
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
@@ -709,10 +803,15 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
           const piecesPerCarton = parseInt(row.piecesPerCarton);
           const lowStockThreshold = row.lowStockThreshold ? parseInt(row.lowStockThreshold) : 5;
           const totalCartons = row.totalCartons ? parseInt(row.totalCartons) : 0;
-          const totalPiecesOverride = row.totalPieces ? parseInt(row.totalPieces) : null;
+          const totalPiecesOverride = row.totalPieces === '' || row.totalPieces == null ? null : parseInt(row.totalPieces);
           const hasVariants = row.hasVariants?.toString().trim().toLowerCase() === 'true';
           const variantName = row.variantName?.trim() || null;
           const variantCartons = row.variantCartons ? parseInt(row.variantCartons) : 0;
+          // `totalPieces` is also accepted for variant rows so older files can
+          // add loose pieces without needing a new column name.
+          const variantPieces = row.variantPieces === '' || row.variantPieces == null
+            ? (hasVariants ? totalPiecesOverride : null)
+            : parseInt(row.variantPieces);
 
           if (isNaN(price) || price <= 0) { errors.push(`Row ${rowNumber}: Invalid price`); return; }
           if (isNaN(piecesPerCarton) || piecesPerCarton <= 0) { errors.push(`Row ${rowNumber}: Invalid piecesPerCarton`); return; }
@@ -720,7 +819,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
           results.push({
             name: row.name.trim(), price, piecesPerCarton,
             colorCode: row.colorCode?.trim() || null,
-            lowStockThreshold, totalCartons, totalPiecesOverride, hasVariants, variantName, variantCartons
+            lowStockThreshold, totalCartons, totalPiecesOverride, hasVariants, variantName, variantCartons, variantPieces
           });
         } catch (err) {
           errors.push(`Row ${rowNumber}: ${err.message}`);
@@ -735,7 +834,7 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
             }
             const entry = productMap.get(r.name);
             if (r.hasVariants && r.variantName) {
-              entry.variants.push({ name: r.variantName, colorCode: r.colorCode, totalCartons: r.variantCartons });
+              entry.variants.push({ name: r.variantName, colorCode: r.colorCode, totalCartons: r.variantCartons, totalPieces: r.variantPieces });
               entry.hasVariants = true;
             } else if (r.totalCartons > 0) {
               entry.totalCartons = r.totalCartons;
@@ -748,42 +847,32 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
             try {
               const hasVariants = data.hasVariants && data.variants.length > 0;
               console.log(`[BULK] Creating "${name}": hasVariants=${hasVariants}, variants=${data.variants.length}`);
-              const product = await prisma.product.create({
-                data: {
-                  name: data.name, price: data.price, piecesPerCarton: data.piecesPerCarton,
-                  colorCode: data.colorCode, lowStockThreshold: data.lowStockThreshold,
-                  hasVariants
-                }
-              });
-              if (hasVariants) {
-                for (const v of data.variants) {
-                  console.log(`[BULK]   Creating variant "${v.name}" for product ${product.id}`);
-                  const variant = await prisma.variant.create({
-                    data: { productId: product.id, name: v.name, colorCode: v.colorCode || null }
-                  });
-                  const vPieces = (v.totalCartons || 0) * data.piecesPerCarton;
-                  await prisma.variantInventory.create({
-                    data: {
-                      variantId: variant.id, totalCartons: v.totalCartons || 0,
-                      remainingCartons: v.totalCartons || 0, totalPieces: vPieces, remainingPieces: vPieces
-                    }
-                  });
-                }
-                console.log(`[BULK]   Created ${data.variants.length} variants for "${name}"`);
-              } else {
-                const totalPieces = data.totalPiecesOverride != null
-                  ? data.totalPiecesOverride
-                  : (data.totalCartons || 0) * data.piecesPerCarton;
-                const totalCartons = data.totalPiecesOverride != null
-                  ? 0
-                  : data.totalCartons || 0;
-                await prisma.inventory.create({
+              const product = await prisma.$transaction(async (tx) => {
+                const created = await tx.product.create({
                   data: {
-                    productId: product.id, totalCartons,
-                    remainingCartons: totalCartons, totalPieces, remainingPieces: totalPieces
+                    name: data.name, price: data.price, piecesPerCarton: data.piecesPerCarton,
+                    colorCode: data.colorCode, lowStockThreshold: data.lowStockThreshold,
+                    hasVariants
                   }
                 });
-              }
+                if (hasVariants) {
+                  for (const v of data.variants) {
+                    const stock = stockFromInput(v, data.piecesPerCarton);
+                    const variant = await tx.variant.create({
+                      data: { productId: created.id, name: v.name, colorCode: v.colorCode || null }
+                    });
+                    await tx.variantInventory.create({
+                      data: { variantId: variant.id, totalCartons: stock.totalCartons, remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces }
+                    });
+                  }
+                } else {
+                  const stock = stockFromInput({ totalCartons: data.totalCartons, totalPieces: data.totalPiecesOverride }, data.piecesPerCarton);
+                  await tx.inventory.create({
+                    data: { productId: created.id, totalCartons: stock.totalCartons, remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces }
+                  });
+                }
+                return created;
+              });
               createdProducts.push(product);
             } catch (err) {
               console.error(`[BULK] Error creating "${name}":`, err.message);

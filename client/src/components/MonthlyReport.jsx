@@ -178,9 +178,10 @@ function MonthlyReport() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(sale.saleDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                       {sale.items?.map((item, idx) => (
-                        <div key={idx} className={!item.product ? 'italic text-gray-400' : ''}>
-                          {item.product?.name || item.productName || 'Deleted Product'}
+                        <div key={idx} className={!item.product ? 'italic text-gray-400' : 'mb-1'}>
+                          <span className="font-medium">{item.product?.name || item.productName || 'Deleted Product'}</span>
                           {item.variant && <span className="text-indigo-600 ml-1">({item.variant.name})</span>}
+                          <span className="text-gray-500 ml-1">— {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} @ N{Number(item.totalPrice).toLocaleString()}</span>
                         </div>
                       ))}
                     </td>
@@ -191,7 +192,12 @@ function MonthlyReport() {
                         </span>
                       ))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sale.totalQuantity}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {sale.items?.map((item, idx) => (
+                        <div key={idx} className="mb-1">{item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''}</div>
+                      ))}
+                      <div className="text-xs text-gray-400">Total: {sale.totalQuantity} pcs</div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">{getPaymentBadge(sale.paymentMode)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">N{sale.totalAmount.toLocaleString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.user?.name || '-'}</td>

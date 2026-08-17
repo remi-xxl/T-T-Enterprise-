@@ -81,7 +81,7 @@ function ManagerLoginModal({ onClose }) {
         </form>
 
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500">Default: admin@store.com / admin123</p>
+          <p className="text-xs text-gray-500">Default: admin@store.com</p>
         </div>
       </div>
     </div>
@@ -107,11 +107,11 @@ function RoleSelector() {
   return (
     <>
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-3 py-3 sm:px-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-4">
               <span className="text-sm font-medium text-gray-700">View as:</span>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={handleManagerClick}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
@@ -156,10 +156,10 @@ function AppContent() {
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-indigo-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center space-x-8">
-              <Link to="/" className="text-xl font-bold">T&T ENTERPRISE</Link>
-              <div className="flex space-x-4">
+          <div className="flex flex-col gap-3 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-8">
+              <Link to="/" className="text-xl font-bold">T&T ENTERPRISES</Link>
+              <div className="flex flex-wrap gap-x-1 gap-y-2 sm:gap-x-4">
                 {isManager && (
                   <Link to="/" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
                     Dashboard
@@ -202,7 +202,7 @@ function AppContent() {
       
       <RoleSelector />
       
-      <main className="max-w-7xl mx-auto py-6 px-4">
+      <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
         <Routes>
           <Route path="/" element={isManager ? <Dashboard /> : (managerLoggedIn ? <Navigate to="/sales" /> : <Navigate to="/sales" />)} />
           <Route path="/products" element={isManager ? <Products /> : <Navigate to="/sales" />} />

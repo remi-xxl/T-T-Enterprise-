@@ -15,7 +15,7 @@ function Sales() {
   const [filteredProducts, setFilteredProducts] = useState([])
   const productDropdownRef = useRef(null)
   const [formData, setFormData] = useState({
-    productId: '', variantId: '', quantity: '', saleType: 'piece', paymentMode: 'cash', notes: ''
+    productId: '', variantId: '', quantity: '', saleType: 'piece', paymentMode: 'cash', notes: '', unitPrice: '', lineTotal: '', pricingMethod: 'per_piece'
   })
   const [filterDate, setFilterDate] = useState({ startDate: '', endDate: '' })
 
@@ -62,8 +62,16 @@ function Sales() {
     }
   }
 
+  const loadSales = async (dates = filterDate) => {
+    const params = new URLSearchParams()
+    if (dates.startDate) params.set('startDate', dates.startDate)
+    if (dates.endDate) params.set('endDate', dates.endDate)
+    const response = await axios.get(`/api/sales${params.size ? `?${params}` : ''}`)
+    setSales(response.data)
+  }
+
   const handleProductSelect = (product) => {
-    setFormData({ ...formData, productId: product.id.toString(), variantId: '' })
+    setFormData({ ...formData, productId: product.id.toString(), variantId: '', unitPrice: product.price.toString() })
     setProductSearch(product.name)
     setShowProductDropdown(false)
   }
@@ -93,11 +101,14 @@ function Sales() {
         userId: parseInt(selectedRepId),
         quantity: parseInt(formData.quantity),
         saleType: formData.saleType,
+        unitPrice: Number(formData.unitPrice),
+        lineTotal: Number(formData.lineTotal),
+        pricingMethod: formData.pricingMethod,
         paymentMode: formData.paymentMode,
         notes: formData.notes
       })
       setShowModal(false)
-      setFormData({ productId: '', variantId: '', quantity: '', saleType: 'piece', paymentMode: 'cash', notes: '' })
+      setFormData({ productId: '', variantId: '', quantity: '', saleType: 'piece', paymentMode: 'cash', notes: '', unitPrice: '', lineTotal: '', pricingMethod: 'per_piece' })
       setProductSearch('')
       fetchData()
     } catch (error) {
@@ -107,15 +118,25 @@ function Sales() {
 
   const handleFilter = async () => {
     try {
-      let url = '/api/sales'
-      const params = new URLSearchParams()
-      if (filterDate.startDate) params.append('startDate', filterDate.startDate)
-      if (filterDate.endDate) params.append('endDate', filterDate.endDate)
-      if (params.toString()) url += `?${params.toString()}`
-      const response = await axios.get(url)
-      setSales(response.data)
+      if (filterDate.startDate && filterDate.endDate && filterDate.startDate > filterDate.endDate) {
+        alert('Start date cannot be after end date')
+        return
+      }
+      await loadSales()
     } catch (error) {
       console.error('Error filtering sales:', error)
+      alert('Unable to filter sales. Please try again.')
+    }
+  }
+
+  const handleClearFilter = async () => {
+    const emptyDates = { startDate: '', endDate: '' }
+    setFilterDate(emptyDates)
+    try {
+      await loadSales(emptyDates)
+    } catch (error) {
+      console.error('Error clearing sales filter:', error)
+      alert('Unable to clear the filter. Please try again.')
     }
   }
 
@@ -130,9 +151,11 @@ function Sales() {
     const product = getSelectedProduct()
     if (!product || !formData.quantity) return 0
     const quantity = parseInt(formData.quantity)
+    if (formData.pricingMethod === 'line_total') return Number(formData.lineTotal) || 0
+    const unitPrice = Number(formData.unitPrice)
     return formData.saleType === 'carton'
-      ? quantity * product.price * product.piecesPerCarton
-      : quantity * product.price
+      ? quantity * unitPrice * product.piecesPerCarton
+      : quantity * unitPrice
   }
 
   const getAvailableStock = () => {
@@ -175,7 +198,7 @@ function Sales() {
               <input type="date" value={filterDate.endDate} onChange={(e) => setFilterDate({ ...filterDate, endDate: e.target.value })} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
             <button onClick={handleFilter} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
-            <button onClick={() => { setFilterDate({ startDate: '', endDate: '' }); fetchData() }} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Clear</button>
+            <button onClick={handleClearFilter} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Clear</button>
           </div>
         </div>
       )}
@@ -206,9 +229,10 @@ function Sales() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(sale.saleDate).toLocaleDateString()}</td>
                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
                   {sale.items?.map((item, idx) => (
-                    <div key={idx} className={!item.product ? 'italic text-gray-400' : ''}>
-                      {item.product?.name || item.productName || 'Deleted'}
+                    <div key={idx} className={!item.product ? 'italic text-gray-400' : 'mb-1'}>
+                      <span className="font-medium">{item.product?.name || item.productName || 'Deleted'}</span>
                       {item.variant && <span className="text-indigo-600 ml-1">({item.variant.name})</span>}
+                      <span className="text-gray-500 ml-1">— {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} @ N{Number(item.totalPrice).toLocaleString()}</span>
                     </div>
                   ))}
                 </td>
@@ -219,7 +243,12 @@ function Sales() {
                     </span>
                   ))}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sale.totalQuantity}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {sale.items?.map((item, idx) => (
+                    <div key={idx} className="mb-1">{item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''}</div>
+                  ))}
+                  <div className="text-xs text-gray-400">Total: {sale.totalQuantity} pcs</div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">{getPaymentBadge(sale.paymentMode)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">N{sale.totalAmount.toLocaleString()}</td>
                 {isManager && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sale.user?.name || '-'}</td>}
@@ -317,6 +346,28 @@ function Sales() {
                   <p className="mt-1 text-sm text-gray-500">Available: {getAvailableStock()} {formData.saleType === 'carton' ? 'cartons' : 'pieces'}</p>
                 )}
               </div>
+
+              {formData.productId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Pricing Method *</label>
+                  <select value={formData.pricingMethod} onChange={(e) => setFormData({ ...formData, pricingMethod: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    <option value="per_piece">Price per piece</option>
+                    <option value="line_total">Set total for this quantity</option>
+                  </select>
+                  {formData.pricingMethod === 'per_piece' ? (
+                    <>
+                      <label className="mt-3 block text-sm font-medium text-gray-700">Selling Price per Piece *</label>
+                      <input type="number" required min="0.01" step="0.01" value={formData.unitPrice} onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                    </>
+                  ) : (
+                    <>
+                      <label className="mt-3 block text-sm font-medium text-gray-700">Final Price for This Quantity *</label>
+                      <input type="number" required min="0.01" step="0.01" value={formData.lineTotal} onChange={(e) => setFormData({ ...formData, lineTotal: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                    </>
+                  )}
+                  <p className="mt-1 text-sm text-gray-500">List price: N{getSelectedProduct()?.price.toLocaleString()} per piece</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>

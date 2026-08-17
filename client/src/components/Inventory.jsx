@@ -6,9 +6,10 @@ function Inventory() {
   const [loading, setLoading] = useState(true)
   const [editingInventory, setEditingInventory] = useState(null)
   const [editingType, setEditingType] = useState(null)
-  const [newCartons, setNewCartons] = useState('')
+  const [newPieces, setNewPieces] = useState('')
 
   useEffect(() => { fetchProducts() }, [])
+
 
   const fetchProducts = async () => {
     try {
@@ -23,17 +24,17 @@ function Inventory() {
 
   const handleUpdateInventory = async () => {
     try {
-      const cartons = parseInt(newCartons)
-      if (isNaN(cartons) || cartons < 0) { alert('Please enter a valid number of cartons'); return }
+      const pieces = parseInt(newPieces)
+      if (isNaN(pieces) || pieces < 0) { alert('Please enter a valid number of pieces'); return }
 
       if (editingType === 'product') {
-        await axios.put(`/api/inventory/${editingInventory}`, { totalCartons: cartons })
+        await axios.put(`/api/inventory/${editingInventory}`, { totalPieces: pieces })
       } else {
-        await axios.put(`/api/variant-inventory/${editingInventory}`, { totalCartons: cartons })
+        await axios.put(`/api/variant-inventory/${editingInventory}`, { totalPieces: pieces })
       }
       setEditingInventory(null)
       setEditingType(null)
-      setNewCartons('')
+      setNewPieces('')
       fetchProducts()
     } catch (error) {
       console.error('Error updating inventory:', error)
@@ -60,7 +61,7 @@ function Inventory() {
           <div>
             <h4 className="font-medium text-gray-900">{title}</h4>
           </div>
-          <button onClick={() => { setEditingInventory(editId); setEditingType(editType); setNewCartons(inventory?.totalCartons?.toString() || '') }}
+          <button onClick={() => { setEditingInventory(editId); setEditingType(editType); setNewPieces(inventory?.totalPieces?.toString() || '') }}
             className="text-indigo-600 hover:text-indigo-900 text-sm">Edit</button>
         </div>
         <div className="space-y-2 text-sm">
@@ -83,12 +84,12 @@ function Inventory() {
         </div>
         {editingInventory === editId && (
           <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Update Total Cartons</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Update Total Pieces</label>
             <div className="flex space-x-2">
-              <input type="number" min="0" value={newCartons} onChange={(e) => setNewCartons(e.target.value)}
+              <input type="number" min="0" value={newPieces} onChange={(e) => setNewPieces(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
               <button onClick={handleUpdateInventory} className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">Save</button>
-              <button onClick={() => { setEditingInventory(null); setEditingType(null); setNewCartons('') }}
+              <button onClick={() => { setEditingInventory(null); setEditingType(null); setNewPieces('') }}
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Cancel</button>
             </div>
           </div>
