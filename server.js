@@ -9,6 +9,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
+const { Pool } = require('pg');
 
 console.log('[STARTUP] Running prisma db push to ensure schema is synced...');
 try {
@@ -24,7 +25,9 @@ if (!dbUrl) {
   console.error('ERROR: DATABASE_URL is not set!');
   process.exit(1);
 }
-const adapter = new PrismaPg({ connectionString: dbUrl });
+const poolUrl = dbUrl.replace(/[?&]sslmode=require/, '?').replace(/\?$/, '');
+const pool = new Pool({ connectionString: poolUrl, ssl: { rejectUnauthorized: false } });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 app.use(cors());
