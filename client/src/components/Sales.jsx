@@ -8,6 +8,7 @@ function Sales() {
   const [sales, setSales] = useState([])
   const [salesReps, setSalesReps] = useState([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [selectedRepId, setSelectedRepId] = useState('')
   const [productSearch, setProductSearch] = useState('')
@@ -95,6 +96,10 @@ function Sales() {
         alert('Please select a variant'); return
       }
 
+      const total = Number(formData.lineTotal) || 0
+      if (!window.confirm(`Record this sale for N${total.toLocaleString()}?`)) return
+
+      setSubmitting(true)
       await axios.post('/api/sales', {
         productId: parseInt(formData.productId),
         variantId: formData.variantId ? parseInt(formData.variantId) : null,
@@ -113,6 +118,8 @@ function Sales() {
       fetchData()
     } catch (error) {
       alert(error.response?.data?.error || 'Error recording sale')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -383,7 +390,9 @@ function Sales() {
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={() => { setShowModal(false); setProductSearch('') }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700">Record Sale</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  {submitting ? 'Recording...' : 'Record Sale'}
+                </button>
               </div>
             </form>
           </div>
