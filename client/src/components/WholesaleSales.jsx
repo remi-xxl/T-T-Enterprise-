@@ -113,7 +113,7 @@ function WholesaleSales() {
 
   const handleProductSelect = (product, index) => {
     const newItems = [...saleItems]
-    newItems[index] = { ...newItems[index], productId: product.id, productName: product.name, unitPrice: product.price, variantId: '', variantName: '' }
+    newItems[index] = { ...newItems[index], productId: product.id, productName: product.name, unitPrice: product.price, variantId: '', variantName: '', groupMode: false, variantLines: [], groupTotal: '' }
     recalculateItem(newItems[index], index, newItems)
     setSaleItems(newItems)
     setProductSearch('')
@@ -127,7 +127,7 @@ function WholesaleSales() {
     setShowProductDropdown(true)
     if (value === '') {
       const newItems = [...saleItems]
-      newItems[index] = { ...newItems[index], productId: '', productName: '', variantId: '', variantName: '' }
+      newItems[index] = { ...newItems[index], productId: '', productName: '', variantId: '', variantName: '', quantity: '', groupMode: false, variantLines: [], groupTotal: '', totalPrice: 0 }
       setSaleItems(newItems)
     }
   }
@@ -161,8 +161,106 @@ function WholesaleSales() {
     setSaleItems(newItems)
   }
 
+  const toggleGroupMode = (index) => {
+    const newItems = [...saleItems]
+    const item = newItems[index]
+    const product = products.find(p => p.id === parseInt(item.productId))
+    if (item.groupMode) {
+      newItems[index] = { ...newItems[index], groupMode: false, groupTotal: '', totalPrice: 0 }
+    } else {
+      if (!product?.hasVariants || !product.variants || product.variants.length === 0) {
+        alert('This product has no variants to group.')
+        return
+      }
+      newItems[index] = {
+        ...newItems[index],
+        groupMode: true,
+        variantId: '',
+        variantLines: product.variants.map(v => ({
+          variantId: v.id, variantName: v.name, colorCode: v.colorCode || '', quantity: '', saleType: item.saleType || 'piece'
+        })),
+        quantity: '',
+        unitPrice: 0,
+        groupTotal: '',
+        totalPrice: 0
+      }
+    }
+    setSaleItems(newItems)
+  }
+
+  const handleVariantLineQty = (index, lineIndex, value) => {
+    const newItems = [...saleItems]
+    const item = newItems[index]
+    const lines = [...(item.variantLines || [])]
+    lines[lineIndex] = { ...lines[lineIndex], quantity: value }
+    newItems[index] = { ...newItems[index], variantLines: lines }
+    const groupTotal = computeGroupTotal(newItems[index])
+    newItems[index] = { ...newItems[index], totalPrice: groupTotal, quantity: computeGroupQty(newItems[index]) }
+    setSaleItems(newItems)
+  }
+
+  const handleGroupSaleType = (index, value) => {
+    const newItems = [...saleItems]
+    const item = newItems[index]
+    newItems[index] = {
+      ...newItems[index],
+      saleType: value,
+      variantLines: (item.variantLines || []).map(l => ({ ...l, saleType: value }))
+    }
+    setSaleItems(newItems)
+  }
+
+  const handleGroupTotalChange = (index, value) => {
+    const newItems = [...saleItems]
+    newItems[index] = { ...newItems[index], groupTotal: value, totalPrice: Number(value) || 0, lineTotal: Number(value) || 0 }
+    setSaleItems(newItems)
+  }
+
+  const computeGroupQty = (item) => {
+    return (item.variantLines || []).reduce((sum, l) => sum + (parseInt(l.quantity) || 0), 0)
+  }
+
+  const computeGroupTotal = (item) => {
+    if (item.groupTotal && Number(item.groupTotal) > 0) return Number(item.groupTotal)
+    const product = products.find(p => p.id === parseInt(item.productId))
+    if (!product) return 0
+    return (item.variantLines || []).reduce((sum, l) => {
+      const q = parseInt(l.quantity) || 0
+      if (q <= 0) return sum
+      return sum + (l.saleType === 'carton' ? q * product.piecesPerCarton * product.price : q * product.price)
+    }, 0)
+  }
+
+  const getGroupTotal = (item) => {
+    if (Number(item.groupTotal) > 0) return Number(item.groupTotal)
+    return computeGroupTotal(item)
+  }
+
+  const getGroupPieces = (item) => {
+    const product = products.find(p => p.id === parseInt(item.productId))
+    if (!product) return 0
+    return (item.variantLines || []).reduce((sum, l) => {
+      const q = parseInt(l.quantity) || 0
+      if (q <= 0) return sum
+      return sum + (l.saleType === 'carton' ? q * product.piecesPerCarton : q)
+    }, 0)
+  }
+
+  const getGroupUnitPrice = (item) => {
+    const pieces = getGroupPieces(item)
+    if (!pieces) return 0
+    return getGroupTotal(item) / pieces
+  }
+
+  const isGroupAdjusted = (item) => {
+    const product = products.find(p => p.id === parseInt(item.productId))
+    if (!product) return false
+    const unit = getGroupUnitPrice(item)
+    return unit > 0 && Math.abs(unit - (product.price || 0)) > 0.01
+  }
+
   const addItem = () => {
-    setSaleItems([...saleItems, { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0 }])
+    setSaleItems([...saleItems, { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0, groupMode: false, variantLines: [], groupTotal: '' }])
   }
 
   const removeItem = (index) => {
@@ -186,17 +284,65 @@ function WholesaleSales() {
     e.preventDefault()
     try {
       if (!selectedRepId) { alert('Please select a sales rep'); return }
-      const validItems = saleItems.filter(item => item.productId && item.quantity)
+      const validItems = saleItems.filter(item => item.productId && (item.quantity || (item.groupMode && computeGroupQty(item) > 0)))
       if (validItems.length === 0) { alert('Please add at least one product'); return }
 
       for (const item of validItems) {
         const product = products.find(p => p.id === parseInt(item.productId))
-        if (product?.hasVariants && !item.variantId) {
+        if (product?.hasVariants && !item.groupMode && !item.variantId) {
           alert(`Please select a variant for ${product.name}`); return
+        }
+        if (item.groupMode && computeGroupQty(item) <= 0) {
+          alert(`Enter quantities for at least one variant of ${item.productName}`); return
         }
       }
 
-      const total = validItems.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0)
+      const expandedItems = []
+      for (const item of validItems) {
+        if (item.groupMode) {
+          const product = products.find(p => p.id === parseInt(item.productId))
+          const lines = item.variantLines.filter(l => parseInt(l.quantity) > 0)
+          const totalPieces = lines.reduce((sum, l) => {
+            const q = parseInt(l.quantity)
+            return sum + (l.saleType === 'carton' ? q * product.piecesPerCarton : q)
+          }, 0)
+          const groupTotal = getGroupTotal(item)
+          if (totalPieces <= 0 || groupTotal <= 0) {
+            alert(`Enter a valid total for ${item.productName}`); return
+          }
+          const perPiece = groupTotal / totalPieces
+          let allocated = 0
+          lines.forEach((l, i) => {
+            const q = parseInt(l.quantity)
+            const pieces = l.saleType === 'carton' ? q * product.piecesPerCarton : q
+            const raw = perPiece * pieces
+            const isLast = i === lines.length - 1
+            const lineTotal = isLast ? groupTotal - allocated : Math.round(raw)
+            allocated += lineTotal
+            expandedItems.push({
+              productId: item.productId,
+              variantId: parseInt(l.variantId),
+              quantity: q,
+              saleType: l.saleType,
+              unitPrice: perPiece,
+              lineTotal,
+              pricingMethod: 'line_total'
+            })
+          })
+        } else {
+          expandedItems.push({
+            productId: parseInt(item.productId),
+            variantId: item.variantId ? parseInt(item.variantId) : null,
+            quantity: parseInt(item.quantity),
+            saleType: item.saleType,
+            unitPrice: Number(item.unitPrice),
+            lineTotal: Number(item.lineTotal),
+            pricingMethod: item.pricingMethod
+          })
+        }
+      }
+
+      const total = expandedItems.reduce((sum, it) => sum + (Number(it.lineTotal) || 0), 0)
       if (!window.confirm(`Record this sale for N${total.toLocaleString()}?`)) return
 
       setSubmitting(true)
@@ -205,15 +351,7 @@ function WholesaleSales() {
         customerId: parseInt(selectedCustomerId),
         paymentMode: formData.paymentMode,
         notes: formData.notes,
-        items: validItems.map(item => ({
-          productId: parseInt(item.productId),
-          variantId: item.variantId ? parseInt(item.variantId) : null,
-          quantity: parseInt(item.quantity),
-          saleType: item.saleType,
-          unitPrice: Number(item.unitPrice),
-          lineTotal: Number(item.lineTotal),
-          pricingMethod: item.pricingMethod
-        }))
+        items: expandedItems
       })
       setShowModal(false)
       resetForm()
@@ -227,7 +365,7 @@ function WholesaleSales() {
 
   const resetForm = () => {
     setFormData({ paymentMode: 'cash', notes: '' })
-    setSaleItems([{ productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0 }])
+    setSaleItems([{ productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0, groupMode: false, variantLines: [], groupTotal: '' }])
     setSelectedCustomerId('')
     setCustomerSearch('')
     setProductSearch('')
@@ -321,10 +459,14 @@ function WholesaleSales() {
     }
   }
 
-  const calculateGrandTotal = () => saleItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
+  const calculateGrandTotal = () => saleItems.reduce((sum, item) => {
+    if (item.groupMode) return sum + Math.max(getGroupTotal(item), 0)
+    return sum + (item.totalPrice || 0)
+  }, 0)
 
   const calculateTotalQuantity = () => {
     return saleItems.reduce((sum, item) => {
+      if (item.groupMode) return sum + getGroupPieces(item)
       const product = products.find(p => p.id === parseInt(item.productId))
       if (!product || !item.quantity) return sum
       return item.saleType === 'carton' ? sum + (parseInt(item.quantity) * product.piecesPerCarton) : sum + parseInt(item.quantity)
@@ -567,52 +709,145 @@ function WholesaleSales() {
                         </div>
 
                         {product?.hasVariants && (
-                          <div className="min-w-0">
-                            <label className="block text-xs text-gray-500">Variant *</label>
-                            <select required value={item.variantId} onChange={(e) => handleVariantSelect(e.target.value, index)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
-                              <option value="">Select</option>
-                              {product.variants?.map((v) => (
-                                <option key={v.id} value={v.id}>{v.name} {v.colorCode && `(${v.colorCode})`}</option>
-                              ))}
-                            </select>
+                          <div className="lg:col-span-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs font-medium text-gray-500">Variant Entry Mode</label>
+                              <button type="button" onClick={() => toggleGroupMode(index)}
+                                className={`text-xs font-medium px-2 py-1 rounded ${item.groupMode ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                {item.groupMode ? 'Grouped mode (one total) - switch to single' : 'Single variant - switch to group (one total)'}
+                              </button>
+                            </div>
+
+                            {!item.groupMode && (
+                              <select required value={item.variantId} onChange={(e) => handleVariantSelect(e.target.value, index)}
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
+                                <option value="">Select</option>
+                                {product.variants?.map((v) => (
+                                  <option key={v.id} value={v.id}>{v.name} {v.colorCode && `(${v.colorCode})`}</option>
+                                ))}
+                              </select>
+                            )}
+
+                            {item.groupMode && (
+                              <div className="mt-1 space-y-2 border border-dashed border-indigo-300 rounded-md p-2 bg-indigo-50/50">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="text-[11px] text-indigo-600 font-medium">Enter quantities for each variant - one total below applies to all</div>
+                                  <div className="flex items-center gap-1">
+                                    <label className="text-[11px] text-gray-500">Type:</label>
+                                    <select value={item.saleType} onChange={(e) => handleGroupSaleType(index, e.target.value)} className="border border-gray-300 rounded-md shadow-sm p-1 text-xs">
+                                      <option value="piece">Piece</option>
+                                      <option value="carton">Carton</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-2">
+                                  {product.variants?.map((v, li) => {
+                                    const line = (item.variantLines || []).find(l => l.variantId === v.id) || { quantity: '' }
+                                    const avail = item.saleType === 'carton' ? (v.inventory?.remainingCartons || 0) : (v.inventory?.remainingPieces || 0)
+                                    return (
+                                      <div key={v.id} className="flex items-center gap-2 border border-gray-200 rounded bg-white px-2 py-1.5">
+                                        <span className="flex-1 text-xs truncate text-gray-700">{v.name} {v.colorCode && `(${v.colorCode})`}</span>
+                                        <span className="text-[10px] text-gray-400">avail {avail}</span>
+                                        <input type="number" min="0" placeholder="Qty" value={line.quantity}
+                                          onChange={(e) => handleVariantLineQty(index, li, e.target.value)}
+                                          className="w-20 border border-gray-300 rounded-md shadow-sm p-1 text-xs" />
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3 pt-1">
+                                  <div className="min-w-32">
+                                    <label className="block text-[11px] text-gray-500">Final total (N) *</label>
+                                    <input type="number" required min="0.01" step="0.01" value={item.groupTotal}
+                                      onChange={(e) => handleGroupTotalChange(index, e.target.value)}
+                                      className={`mt-0.5 block w-full border rounded-md shadow-sm p-1.5 text-sm ${isGroupAdjusted(item) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`}
+                                      placeholder="e.g. 30000" />
+                                  </div>
+                                  <div className="text-xs text-gray-500 space-y-0.5">
+                                    {computeGroupQty(item) > 0 && <div>Total qty: <b>{computeGroupQty(item)}</b> ({getGroupPieces(item)} pcs)</div>}
+                                    {getGroupPieces(item) > 0 && <div>Per piece: <b>N{getGroupUnitPrice(item).toFixed(0).toLocaleString()}</b></div>}
+                                    {isGroupAdjusted(item) && <span className="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adjusted</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
-                        <div className="min-w-0">
-                          <label className="block text-xs text-gray-500">Type *</label>
-                          <select value={item.saleType} onChange={(e) => handleItemChange(index, 'saleType', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
-                            <option value="piece">Piece</option>
-                            <option value="carton">Carton</option>
-                          </select>
-                        </div>
-                        <div className="min-w-0">
-                          <label className="block text-xs text-gray-500">Price Method *</label>
-                          <select value={item.pricingMethod} onChange={(e) => handleItemChange(index, 'pricingMethod', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
-                            <option value="per_piece">Per piece</option>
-                            <option value="line_total">Set total</option>
-                          </select>
-                        </div>
-                        <div className="min-w-0">
-                          <label className="flex items-center gap-1 text-xs text-gray-500">
-                            {item.pricingMethod === 'line_total' ? 'Final total *' : 'Price / pc *'}
-                            {isPriceAdjusted(item) && (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adjusted</span>
-                            )}
-                          </label>
-                          <input type="number" required min="0.01" step="0.01" value={item.pricingMethod === 'line_total' ? item.lineTotal : item.unitPrice} onChange={(e) => handleItemChange(index, item.pricingMethod === 'line_total' ? 'lineTotal' : 'unitPrice', e.target.value)} className={`mt-1 block w-full border rounded-md shadow-sm p-2 text-sm ${isPriceAdjusted(item) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`} />
-                          {product && <span className="text-xs text-gray-400">List: N{product.price.toLocaleString()}/pc</span>}
-                        </div>
-                        <div className="min-w-0">
-                          <label className="block text-xs text-gray-500">Qty *</label>
-                          <input type="number" required min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
-                          {item.productId && (item.variantId || !product?.hasVariants) && (
-                            <span className="text-xs text-gray-400">Avail: {getAvailableStock(item)}</span>
-                          )}
-                        </div>
+                        {!product?.hasVariants && (
+                          <>
+                            <div className="min-w-0">
+                              <label className="block text-xs text-gray-500">Type *</label>
+                              <select value={item.saleType} onChange={(e) => handleItemChange(index, 'saleType', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
+                                <option value="piece">Piece</option>
+                                <option value="carton">Carton</option>
+                              </select>
+                            </div>
+                            <div className="min-w-0">
+                              <label className="block text-xs text-gray-500">Price Method *</label>
+                              <select value={item.pricingMethod} onChange={(e) => handleItemChange(index, 'pricingMethod', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
+                                <option value="per_piece">Per piece</option>
+                                <option value="line_total">Set total</option>
+                              </select>
+                            </div>
+                            <div className="min-w-0">
+                              <label className="flex items-center gap-1 text-xs text-gray-500">
+                                {item.pricingMethod === 'line_total' ? 'Final total *' : 'Price / pc *'}
+                                {isPriceAdjusted(item) && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adjusted</span>
+                                )}
+                              </label>
+                              <input type="number" required min="0.01" step="0.01" value={item.pricingMethod === 'line_total' ? item.lineTotal : item.unitPrice} onChange={(e) => handleItemChange(index, item.pricingMethod === 'line_total' ? 'lineTotal' : 'unitPrice', e.target.value)} className={`mt-1 block w-full border rounded-md shadow-sm p-2 text-sm ${isPriceAdjusted(item) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`} />
+                              {product && <span className="text-xs text-gray-400">List: N{product.price.toLocaleString()}/pc</span>}
+                            </div>
+                            <div className="min-w-0">
+                              <label className="block text-xs text-gray-500">Qty *</label>
+                              <input type="number" required min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
+                              {item.productId && (item.variantId || !product?.hasVariants) && (
+                                <span className="text-xs text-gray-400">Avail: {getAvailableStock(item)}</span>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        {product?.hasVariants && !item.groupMode && (
+                          <>
+                            <div className="min-w-0">
+                              <label className="block text-xs text-gray-500">Type *</label>
+                              <select value={item.saleType} onChange={(e) => handleItemChange(index, 'saleType', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
+                                <option value="piece">Piece</option>
+                                <option value="carton">Carton</option>
+                              </select>
+                            </div>
+                            <div className="min-w-0">
+                              <label className="block text-xs text-gray-500">Price Method *</label>
+                              <select value={item.pricingMethod} onChange={(e) => handleItemChange(index, 'pricingMethod', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm">
+                                <option value="per_piece">Per piece</option>
+                                <option value="line_total">Set total</option>
+                              </select>
+                            </div>
+                            <div className="min-w-0">
+                              <label className="flex items-center gap-1 text-xs text-gray-500">
+                                {item.pricingMethod === 'line_total' ? 'Final total *' : 'Price / pc *'}
+                                {isPriceAdjusted(item) && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adjusted</span>
+                                )}
+                              </label>
+                              <input type="number" required min="0.01" step="0.01" value={item.pricingMethod === 'line_total' ? item.lineTotal : item.unitPrice} onChange={(e) => handleItemChange(index, item.pricingMethod === 'line_total' ? 'lineTotal' : 'unitPrice', e.target.value)} className={`mt-1 block w-full border rounded-md shadow-sm p-2 text-sm ${isPriceAdjusted(item) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`} />
+                              {product && <span className="text-xs text-gray-400">List: N{product.price.toLocaleString()}/pc</span>}
+                            </div>
+                            <div className="min-w-0">
+                              <label className="block text-xs text-gray-500">Qty *</label>
+                              <input type="number" required min="1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
+                              {item.productId && (item.variantId || !product?.hasVariants) && (
+                                <span className="text-xs text-gray-400">Avail: {getAvailableStock(item)}</span>
+                              )}
+                            </div>
+                          </>
+                        )}
                         <div className="min-w-0">
                           <label className="block text-xs text-gray-500">Total</label>
-                          <div className="mt-1 p-2 bg-gray-100 rounded-md text-sm font-medium text-green-600">N{(item.totalPrice || 0).toLocaleString()}</div>
+                          <div className="mt-1 p-2 bg-gray-100 rounded-md text-sm font-medium text-green-600">N{(item.groupMode ? getGroupTotal(item) : item.totalPrice || 0).toLocaleString()}</div>
                         </div>
                         {saleItems.length > 1 && (
                           <button type="button" onClick={() => removeItem(index)} className="justify-self-start p-2 text-red-600 hover:text-red-800">Remove</button>
