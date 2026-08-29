@@ -118,8 +118,14 @@ function Products() {
   const handleAddVariant = async (e) => {
     e.preventDefault()
     try {
+      const trimmedName = variantForm.name.trim()
+      const existing = addingVariantTo.variants?.some(v => v.name.toLowerCase() === trimmedName.toLowerCase())
+      if (existing) {
+        alert(`Variant "${trimmedName}" already exists for ${addingVariantTo.name}`)
+        return
+      }
       await axios.post(`/api/products/${addingVariantTo.id}/variants`, {
-        name: variantForm.name,
+        name: trimmedName,
         colorCode: variantForm.colorCode || null,
         totalCartons: parseInt(variantForm.totalCartons) || 0,
         totalPieces: variantForm.totalPieces === '' ? undefined : parseInt(variantForm.totalPieces)

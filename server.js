@@ -172,9 +172,15 @@ app.post('/api/products', async (req, res) => {
     });
 
     if (hasVariants && variants && variants.length > 0) {
+      const seen = new Set();
       for (const v of variants) {
+        const vName = v.name?.trim();
+        if (!vName) continue;
+        const key = vName.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
         const variant = await prisma.variant.create({
-          data: { productId: product.id, name: v.name, colorCode: v.colorCode || null }
+          data: { productId: product.id, name: vName, colorCode: v.colorCode || null }
         });
         const stock = stockFromInput(v, piecesPerCarton);
         await prisma.variantInventory.create({
@@ -286,8 +292,14 @@ app.post('/api/products/:productId/variants', async (req, res) => {
     const { name, colorCode, totalCartons, totalPieces } = req.body;
     const product = await prisma.product.findUnique({ where: { id: parseInt(productId) } });
     if (!product) return res.status(404).json({ error: 'Product not found' });
+    const trimmedName = name?.trim();
+    if (!trimmedName) return res.status(400).json({ error: 'Variant name is required' });
+    const existing = await prisma.variant.findFirst({
+      where: { productId: parseInt(productId), name: { equals: trimmedName, mode: 'insensitive' } }
+    });
+    if (existing) return res.status(400).json({ error: `Variant "${trimmedName}" already exists for this product` });
     const variant = await prisma.variant.create({
-      data: { productId: parseInt(productId), name, colorCode: colorCode || null }
+      data: { productId: parseInt(productId), name: trimmedName, colorCode: colorCode || null }
     });
     const stock = stockFromInput({ totalCartons, totalPieces }, product.piecesPerCarton);
     await prisma.variantInventory.create({
@@ -859,10 +871,16 @@ app.post('/api/products/bulk', upload.single('file'), async (req, res) => {
                   }
                 });
                 if (hasVariants) {
+                  const seen = new Set();
                   for (const v of data.variants) {
+                    const vName = v.name?.trim();
+                    if (!vName) continue;
+                    const key = vName.toLowerCase();
+                    if (seen.has(key)) continue;
+                    seen.add(key);
                     const stock = stockFromInput(v, data.piecesPerCarton);
                     const variant = await tx.variant.create({
-                      data: { productId: created.id, name: v.name, colorCode: v.colorCode || null }
+                      data: { productId: created.id, name: vName, colorCode: v.colorCode || null }
                     });
                     await tx.variantInventory.create({
                       data: { variantId: variant.id, totalCartons: stock.totalCartons, remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces }
