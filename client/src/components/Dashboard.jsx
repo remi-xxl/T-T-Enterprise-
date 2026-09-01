@@ -150,7 +150,7 @@ function Dashboard() {
 
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">All Time Stats</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-500">Total Revenue</p>
             <p className="text-2xl font-bold text-indigo-600">N{(stats?.totalStats?.revenue || 0).toLocaleString()}</p>

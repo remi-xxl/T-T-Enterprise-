@@ -160,6 +160,7 @@ function MonthlyReport() {
             <div className="p-6 border-b">
               <h3 className="text-lg font-semibold text-gray-900">Transaction Details</h3>
             </div>
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -205,6 +206,7 @@ function MonthlyReport() {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       )}

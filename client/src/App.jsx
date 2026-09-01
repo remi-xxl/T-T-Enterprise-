@@ -156,33 +156,33 @@ function AppContent() {
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-indigo-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col gap-3 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:py-0">
+            <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-2 lg:h-16 lg:py-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-8">
               <Link to="/" className="text-xl font-bold">T&T ENTERPRISES</Link>
-              <div className="flex flex-wrap gap-x-1 gap-y-2 sm:gap-x-4">
+              <div className="flex flex-wrap gap-x-1 gap-y-1 sm:gap-x-2">
                 {isManager && (
-                  <Link to="/" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                  <Link to="/" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                     Dashboard
                   </Link>
                 )}
-                <Link to="/sales" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                <Link to="/sales" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                   {isSalesRep ? 'Record Sale' : 'Retail Sales'}
                 </Link>
-                <Link to="/wholesale" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                <Link to="/wholesale" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                   Wholesale
                 </Link>
                 {isManager && (
                   <>
-                    <Link to="/products" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                    <Link to="/products" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Products
                     </Link>
-                    <Link to="/inventory" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                    <Link to="/inventory" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Inventory
                     </Link>
-                    <Link to="/reports" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                    <Link to="/reports" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Monthly Report
                     </Link>
-                    <Link to="/admin" className="hover:text-indigo-200 px-3 py-2 rounded-md text-sm font-medium">
+                    <Link to="/admin" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Admin
                     </Link>
                   </>

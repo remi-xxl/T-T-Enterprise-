@@ -67,6 +67,7 @@ function Admin() {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -90,6 +91,7 @@ function Admin() {
             ))}
           </tbody>
         </table>
+        </div>
         {salesReps.length === 0 && (
           <div className="text-center py-12"><p className="text-gray-500">No sales reps added yet</p></div>
         )}

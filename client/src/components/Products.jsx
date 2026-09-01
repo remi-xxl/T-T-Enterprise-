@@ -203,6 +203,7 @@ function Products() {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -254,12 +255,13 @@ function Products() {
             })}
           </tbody>
         </table>
+        </div>
         {products.length === 0 && <div className="text-center py-12"><p className="text-gray-500">No products yet</p></div>}
       </div>
 
       {showBulkModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-[500px] shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-[500px] shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Bulk Upload Products</h3>
               <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setUploadResult(null) }} className="text-gray-400 hover:text-gray-600">X</button>
@@ -316,7 +318,7 @@ function Products() {
 
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-[520px] shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+          <div className="relative top-10 mx-auto p-5 border w-full max-w-[520px] shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
               <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">X</button>

@@ -916,12 +916,12 @@ function WholesaleSales() {
 
       {showCustomerDetail && customerPurchases && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-[700px] shadow-lg rounded-md bg-white">
+          <div className="relative top-10 mx-auto p-5 border w-full max-w-[700px] shadow-lg rounded-md bg-white">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{customerPurchases.customer.name} - Purchase History</h3>
               <button onClick={() => { setShowCustomerDetail(false); setSelectedCustomer(null); setCustomerPurchases(null) }} className="text-gray-400 hover:text-gray-600">X</button>
             </div>
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div className="bg-green-50 p-3 rounded-lg">
                 <p className="text-sm text-gray-500">Total Spent</p>
                 <p className="text-xl font-bold text-green-600">N{customerPurchases.summary.totalSpent.toLocaleString()}</p>
