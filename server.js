@@ -733,10 +733,17 @@ app.post('/api/wholesale-sales', async (req, res) => {
 app.get('/api/customers/:id/purchases', async (req, res) => {
   try {
     const { id } = req.params;
+    const { startDate, endDate } = req.query;
     const customer = await prisma.customer.findUnique({ where: { id: parseInt(id) } });
     if (!customer) return res.status(404).json({ error: 'Customer not found' });
+    const where = { customerId: parseInt(id) };
+    if (startDate || endDate) {
+      where.saleDate = {};
+      if (startDate) where.saleDate.gte = new Date(`${startDate}T00:00:00.000Z`);
+      if (endDate) where.saleDate.lte = new Date(`${endDate}T23:59:59.999Z`);
+    }
     const sales = await prisma.sale.findMany({
-      where: { customerId: parseInt(id) },
+      where,
       include: {
         items: { include: { product: true, variant: true } },
         user: { select: { name: true } }

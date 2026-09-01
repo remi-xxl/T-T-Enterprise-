@@ -2,6 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useRole } from '../context/RoleContext'
 
+const getDateRange = (range) => {
+  const today = new Date()
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const endDate = fmt(today)
+  if (range === 'all') return { startDate: '', endDate: '' }
+  const start = new Date(today)
+  if (range === '7d') start.setDate(today.getDate() - 6)
+  else if (range === '30d') start.setDate(today.getDate() - 29)
+  else if (range === 'month') start.setDate(1)
+  return { startDate: fmt(start), endDate }
+}
+
 function Sales() {
   const { isManager, isSalesRep } = useRole()
   const [products, setProducts] = useState([])
@@ -18,9 +30,13 @@ function Sales() {
   const [formData, setFormData] = useState({
     productId: '', variantId: '', quantity: '', saleType: 'piece', paymentMode: 'cash', notes: '', unitPrice: '', lineTotal: '', pricingMethod: 'per_piece'
   })
-  const [filterDate, setFilterDate] = useState({ startDate: '', endDate: '' })
+  const [filterDate, setFilterDate] = useState(getDateRange('7d'))
+  const [quickRange, setQuickRange] = useState('7d')
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchData()
+    loadSales()
+  }, [])
 
   useEffect(() => {
     if (productSearch.trim() === '') {
@@ -47,13 +63,11 @@ function Sales() {
 
   const fetchData = async () => {
     try {
-      const [productsRes, salesRes, repsRes] = await Promise.all([
+      const [productsRes, repsRes] = await Promise.all([
         axios.get('/api/products'),
-        axios.get('/api/sales'),
         axios.get('/api/salesreps')
       ])
       setProducts(productsRes.data)
-      setSales(salesRes.data)
       setSalesReps(repsRes.data)
       if (repsRes.data.length > 0 && !selectedRepId) setSelectedRepId(repsRes.data[0].id.toString())
     } catch (error) {
@@ -115,12 +129,19 @@ function Sales() {
       setShowModal(false)
       setFormData({ productId: '', variantId: '', quantity: '', saleType: 'piece', paymentMode: 'cash', notes: '', unitPrice: '', lineTotal: '', pricingMethod: 'per_piece' })
       setProductSearch('')
-      fetchData()
+      loadSales()
     } catch (error) {
       alert(error.response?.data?.error || 'Error recording sale')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const applyQuickRange = (range) => {
+    const dates = getDateRange(range)
+    setQuickRange(range)
+    setFilterDate(dates)
+    loadSales(dates)
   }
 
   const handleFilter = async () => {
@@ -136,16 +157,7 @@ function Sales() {
     }
   }
 
-  const handleClearFilter = async () => {
-    const emptyDates = { startDate: '', endDate: '' }
-    setFilterDate(emptyDates)
-    try {
-      await loadSales(emptyDates)
-    } catch (error) {
-      console.error('Error clearing sales filter:', error)
-      alert('Unable to clear the filter. Please try again.')
-    }
-  }
+  const handleClearFilter = () => applyQuickRange('all')
 
   const getSelectedProduct = () => products.find(p => p.id === parseInt(formData.productId))
   const getSelectedVariant = () => {
@@ -195,17 +207,28 @@ function Sales() {
 
       {isManager && (
         <div className="bg-white shadow rounded-lg p-4">
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[
+              { key: '7d', label: 'Last 7 Days' },
+              { key: '30d', label: 'Last 30 Days' },
+              { key: 'month', label: 'This Month' },
+              { key: 'all', label: 'All Time' }
+            ].map(({ key, label }) => (
+              <button key={key} onClick={() => applyQuickRange(key)} className={`px-3 py-1.5 rounded-md text-sm font-medium ${quickRange === key ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <input type="date" value={filterDate.startDate} onChange={(e) => setFilterDate({ ...filterDate, startDate: e.target.value })} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.startDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, startDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">End Date</label>
-              <input type="date" value={filterDate.endDate} onChange={(e) => setFilterDate({ ...filterDate, endDate: e.target.value })} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.endDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, endDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
             <button onClick={handleFilter} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
-            <button onClick={handleClearFilter} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Clear</button>
           </div>
         </div>
       )}

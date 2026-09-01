@@ -2,6 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useRole } from '../context/RoleContext'
 
+const getDateRange = (range) => {
+  const today = new Date()
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const endDate = fmt(today)
+  if (range === 'all') return { startDate: '', endDate: '' }
+  const start = new Date(today)
+  if (range === '7d') start.setDate(today.getDate() - 6)
+  else if (range === '30d') start.setDate(today.getDate() - 29)
+  else if (range === 'month') start.setDate(1)
+  return { startDate: fmt(start), endDate }
+}
+
 function WholesaleSales() {
   const { isManager } = useRole()
   const [products, setProducts] = useState([])
@@ -31,9 +43,13 @@ function WholesaleSales() {
     { productId: '', productName: '', variantId: '', variantName: '', quantity: '', saleType: 'carton', unitPrice: 0, lineTotal: '', pricingMethod: 'per_piece', totalPrice: 0 }
   ])
   const [customerForm, setCustomerForm] = useState({ name: '', phone: '', address: '' })
-  const [filterDate, setFilterDate] = useState({ startDate: '', endDate: '' })
+  const [filterDate, setFilterDate] = useState(getDateRange('7d'))
+  const [quickRange, setQuickRange] = useState('7d')
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchData()
+    loadSales()
+  }, [])
 
   useEffect(() => {
     if (productSearch.trim() === '') setFilteredProducts(products)
@@ -93,14 +109,12 @@ function WholesaleSales() {
 
   const fetchData = async () => {
     try {
-      const [productsRes, salesRes, repsRes, customersRes] = await Promise.all([
+      const [productsRes, repsRes, customersRes] = await Promise.all([
         axios.get('/api/products'),
-        axios.get('/api/wholesale-sales'),
         axios.get('/api/salesreps'),
         axios.get('/api/customers')
       ])
       setProducts(productsRes.data)
-      setSales(salesRes.data)
       setSalesReps(repsRes.data)
       setCustomers(customersRes.data)
       if (repsRes.data.length > 0 && !selectedRepId) setSelectedRepId(repsRes.data[0].id.toString())
@@ -356,6 +370,7 @@ function WholesaleSales() {
       setShowModal(false)
       resetForm()
       fetchData()
+      loadSales()
     } catch (error) {
       alert(error.response?.data?.error || 'Error recording sale')
     } finally {
@@ -434,23 +449,42 @@ function WholesaleSales() {
     setTimeout(() => { if (iframe.parentNode) document.body.removeChild(iframe) }, 1000)
   }
 
+  const loadSales = async (dates = filterDate) => {
+    const params = new URLSearchParams()
+    if (dates.startDate) params.append('startDate', dates.startDate)
+    if (dates.endDate) params.append('endDate', dates.endDate)
+    const url = `/api/wholesale-sales${params.toString() ? `?${params.toString()}` : ''}`
+    const response = await axios.get(url)
+    setSales(response.data)
+  }
+
+  const applyQuickRange = (range) => {
+    const dates = getDateRange(range)
+    setQuickRange(range)
+    setFilterDate(dates)
+    loadSales(dates)
+  }
+
   const handleFilter = async () => {
     try {
-      let url = '/api/wholesale-sales'
-      const params = new URLSearchParams()
-      if (filterDate.startDate) params.append('startDate', filterDate.startDate)
-      if (filterDate.endDate) params.append('endDate', filterDate.endDate)
-      if (params.toString()) url += `?${params.toString()}`
-      const response = await axios.get(url)
-      setSales(response.data)
+      if (filterDate.startDate && filterDate.endDate && filterDate.startDate > filterDate.endDate) {
+        alert('Start date cannot be after end date')
+        return
+      }
+      await loadSales()
     } catch (error) {
       console.error('Error filtering sales:', error)
+      alert('Unable to filter sales. Please try again.')
     }
   }
 
   const viewCustomerDetail = async (customer) => {
     try {
-      const response = await axios.get(`/api/customers/${customer.id}/purchases`)
+      const params = new URLSearchParams()
+      if (filterDate.startDate) params.append('startDate', filterDate.startDate)
+      if (filterDate.endDate) params.append('endDate', filterDate.endDate)
+      const qs = params.toString() ? `?${params.toString()}` : ''
+      const response = await axios.get(`/api/customers/${customer.id}/purchases${qs}`)
       setCustomerPurchases(response.data)
       setSelectedCustomer(customer)
       setShowCustomerDetail(true)
@@ -526,17 +560,28 @@ function WholesaleSales() {
 
       {isManager && (
         <div className="bg-white shadow rounded-lg p-4">
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[
+              { key: '7d', label: 'Last 7 Days' },
+              { key: '30d', label: 'Last 30 Days' },
+              { key: 'month', label: 'This Month' },
+              { key: 'all', label: 'All Time' }
+            ].map(({ key, label }) => (
+              <button key={key} onClick={() => applyQuickRange(key)} className={`px-3 py-1.5 rounded-md text-sm font-medium ${quickRange === key ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <input type="date" value={filterDate.startDate} onChange={(e) => setFilterDate({ ...filterDate, startDate: e.target.value })} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.startDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, startDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">End Date</label>
-              <input type="date" value={filterDate.endDate} onChange={(e) => setFilterDate({ ...filterDate, endDate: e.target.value })} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.endDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, endDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
             <button onClick={handleFilter} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
-            <button onClick={() => { setFilterDate({ startDate: '', endDate: '' }); fetchData() }} className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">Clear</button>
           </div>
         </div>
       )}
