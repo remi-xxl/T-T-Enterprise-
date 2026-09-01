@@ -32,7 +32,7 @@ function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-3 bg-indigo-100 rounded-full"><span className="text-2xl">📦</span></div>
+            <div className="p-3 bg-pink-100 rounded-full"><span className="text-2xl">📦</span></div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Products</p>
               <p className="text-2xl font-semibold text-gray-900">{stats?.totalProducts || 0}</p>
@@ -153,11 +153,11 @@ function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-500">Total Revenue</p>
-            <p className="text-2xl font-bold text-indigo-600">N{(stats?.totalStats?.revenue || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-pink-600">N{(stats?.totalStats?.revenue || 0).toLocaleString()}</p>
           </div>
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-500">Total Pieces Sold</p>
-            <p className="text-2xl font-bold text-indigo-600">{stats?.totalStats?.piecesSold || 0}</p>
+            <p className="text-2xl font-bold text-pink-600">{stats?.totalStats?.piecesSold || 0}</p>
           </div>
         </div>
       </div>

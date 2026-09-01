@@ -548,13 +548,13 @@ function WholesaleSales() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(salesByCustomer).map(([name, data]) => (
-              <div key={name} className="border rounded-lg p-4 hover:border-indigo-300 cursor-pointer" onClick={() => viewCustomerDetail(data.customer)}>
+              <div key={name} className="border rounded-lg p-4 hover:border-pink-300 cursor-pointer" onClick={() => viewCustomerDetail(data.customer)}>
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-medium text-gray-900">{name}</p>
                     {data.customer?.phone && <p className="text-sm text-gray-500">{data.customer.phone}</p>}
                   </div>
-                  <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">{data.sales.length} sales</span>
+                  <span className="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded-full">{data.sales.length} sales</span>
                 </div>
                 <div className="mt-3 flex justify-between">
                   <span className="text-sm text-gray-500">{data.items} pieces</span>
@@ -592,7 +592,7 @@ function WholesaleSales() {
                       {sale.items?.map((item, idx) => (
                         <div key={idx} className={!item.product ? 'italic text-gray-400' : ''}>
                           <span className="font-medium">{item.product?.name || item.productName || 'Deleted'}</span>
-                          {item.variant && <span className="text-indigo-600 ml-1">({item.variant.name})</span>}
+                          {item.variant && <span className="text-pink-600 ml-1">({item.variant.name})</span>}
                           <span className="text-gray-500 ml-1">— {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} @ N{Number(item.totalPrice).toLocaleString()}</span>
                           {item.priceAdjusted && <span className="ml-1 px-1 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adj</span>}
                         </div>
@@ -609,7 +609,7 @@ function WholesaleSales() {
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-green-600">N{sale.totalAmount.toLocaleString()}</td>
                   {isManager && <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{sale.user?.name || '-'}</td>}
                   <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <button type="button" onClick={() => printReceipt(sale)} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700">Print</button>
+                    <button type="button" onClick={() => printReceipt(sale)} className="px-3 py-1 bg-pink-600 text-white rounded-md text-xs hover:bg-pink-700">Print</button>
                   </td>
                 </tr>
               ))}
@@ -652,7 +652,7 @@ function WholesaleSales() {
                             <div className="px-3 py-2 text-sm text-gray-500">No customers found</div>
                           ) : (
                             filteredCustomers.map((cust) => (
-                              <div key={cust.id} onClick={() => handleCustomerSelect(cust)} className={`px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm ${selectedCustomerId === cust.id.toString() ? 'bg-indigo-50' : ''}`}>
+                              <div key={cust.id} onClick={() => handleCustomerSelect(cust)} className={`px-3 py-2 cursor-pointer hover:bg-pink-50 border-b border-gray-100 last:border-0 text-sm ${selectedCustomerId === cust.id.toString() ? 'bg-pink-50' : ''}`}>
                                 <div className="font-medium">{cust.name}</div>
                                 {cust.phone && <div className="text-xs text-gray-500">{cust.phone}</div>}
                               </div>
@@ -678,7 +678,7 @@ function WholesaleSales() {
               <div className="border rounded-lg p-4">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-medium text-gray-900">Products</h4>
-                  <button type="button" onClick={addItem} className="text-sm text-indigo-600 hover:text-indigo-800">+ Add Product</button>
+                  <button type="button" onClick={addItem} className="text-sm text-pink-600 hover:text-pink-800">+ Add Product</button>
                 </div>
                 <div className="space-y-3">
                   {saleItems.map((item, index) => {
@@ -694,7 +694,7 @@ function WholesaleSales() {
                           {showProductDropdown && activeItemIndex === index && filteredProducts.length > 0 && (
                             <div className="absolute left-0 right-0 z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-300 bg-white shadow-lg">
                               {filteredProducts.map((product) => (
-                                <div key={product.id} onClick={() => handleProductSelect(product, index)} className="px-3 py-2 cursor-pointer hover:bg-indigo-50 border-b border-gray-100 last:border-0 text-sm">
+                                <div key={product.id} onClick={() => handleProductSelect(product, index)} className="px-3 py-2 cursor-pointer hover:bg-pink-50 border-b border-gray-100 last:border-0 text-sm">
                                   <div className="flex justify-between">
                                     <span className="font-medium">{product.name}</span>
                                     <span className="text-green-600">N{product.price.toLocaleString()}/pc</span>
@@ -713,7 +713,7 @@ function WholesaleSales() {
                             <div className="flex items-center justify-between mb-2">
                               <label className="text-xs font-medium text-gray-500">Variant Entry Mode</label>
                               <button type="button" onClick={() => toggleGroupMode(index)}
-                                className={`text-xs font-medium px-2 py-1 rounded ${item.groupMode ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                className={`text-xs font-medium px-2 py-1 rounded ${item.groupMode ? 'bg-pink-100 text-pink-700' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
                                 {item.groupMode ? 'Grouped mode (one total) - switch to single' : 'Single variant - switch to group (one total)'}
                               </button>
                             </div>
@@ -729,9 +729,9 @@ function WholesaleSales() {
                             )}
 
                             {item.groupMode && (
-                              <div className="mt-1 space-y-2 border border-dashed border-indigo-300 rounded-md p-2 bg-indigo-50/50">
+                              <div className="mt-1 space-y-2 border border-dashed border-pink-300 rounded-md p-2 bg-pink-50/50">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <div className="text-[11px] text-indigo-600 font-medium">Enter quantities for each variant - one total below applies to all</div>
+                                  <div className="text-[11px] text-pink-600 font-medium">Enter quantities for each variant - one total below applies to all</div>
                                   <div className="flex items-center gap-1">
                                     <label className="text-[11px] text-gray-500">Type:</label>
                                     <select value={item.saleType} onChange={(e) => handleGroupSaleType(index, e.target.value)} className="border border-gray-300 rounded-md shadow-sm p-1 text-xs">

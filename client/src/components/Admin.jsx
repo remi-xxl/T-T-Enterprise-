@@ -61,7 +61,7 @@ function Admin() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Manage Sales Reps</h1>
-        <button onClick={() => setShowModal(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+        <button onClick={() => setShowModal(true)} className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700">
           + Add Sales Rep
         </button>
       </div>
@@ -84,7 +84,7 @@ function Admin() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{rep.email}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(rep.createdAt).toLocaleDateString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button onClick={() => handleEdit(rep)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                  <button onClick={() => handleEdit(rep)} className="text-pink-600 hover:text-pink-900">Edit</button>
                   <button onClick={() => handleDelete(rep.id)} className="text-red-600 hover:text-red-900">Delete</button>
                 </td>
               </tr>
@@ -115,7 +115,7 @@ function Admin() {
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={() => { setShowModal(false); setEditingRep(null) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">{editingRep ? 'Update' : 'Add'}</button>
+                <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">{editingRep ? 'Update' : 'Add'}</button>
               </div>
             </form>
           </div>

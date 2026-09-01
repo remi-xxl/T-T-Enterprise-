@@ -195,7 +195,7 @@ function Products() {
         <h1 className="text-3xl font-bold text-gray-900">Products</h1>
         <div className="flex space-x-3">
           <button onClick={() => setShowBulkModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Bulk Upload</button>
-          <button onClick={() => setShowModal(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">+ Add Product</button>
+          <button onClick={() => setShowModal(true)} className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700">+ Add Product</button>
           {products.length > 0 && (
             <button onClick={handleDeleteAll} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Delete All</button>
           )}
@@ -222,7 +222,7 @@ function Products() {
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{product.name}</div>
                     {product.colorCode && <div className="text-xs text-gray-500">Color: {product.colorCode}</div>}
-                    {product.hasVariants && <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Has Variants</span>}
+                    {product.hasVariants && <span className="text-xs bg-pink-100 text-pink-800 px-2 py-0.5 rounded-full">Has Variants</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">N{product.price.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
@@ -247,7 +247,7 @@ function Products() {
                     {product.hasVariants && (
                       <button onClick={() => { setAddingVariantTo(product); setShowVariantModal(true) }} className="text-green-600 hover:text-green-900">+ Variant</button>
                     )}
-                    <button onClick={() => handleEdit(product)} className="text-indigo-600 hover:text-indigo-900">Edit</button>
+                    <button onClick={() => handleEdit(product)} className="text-pink-600 hover:text-pink-900">Edit</button>
                     <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">Delete</button>
                   </td>
                 </tr>
@@ -277,7 +277,7 @@ function Products() {
                 </ol>
               </div>
               <div className="flex justify-center">
-                <button onClick={downloadTemplate} className="bg-white border-2 border-indigo-600 text-indigo-600 px-6 py-3 rounded-lg hover:bg-indigo-50 font-medium">Download CSV Template</button>
+                <button onClick={downloadTemplate} className="bg-white border-2 border-pink-600 text-pink-600 px-6 py-3 rounded-lg hover:bg-pink-50 font-medium">Download CSV Template</button>
               </div>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 <input ref={fileInputRef} type="file" accept=".csv" onChange={(e) => setBulkFile(e.target.files[0])} className="hidden" />
@@ -352,7 +352,7 @@ function Products() {
               <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                 <input type="checkbox" id="hasVariants" checked={formData.hasVariants}
                   onChange={(e) => setFormData({ ...formData, hasVariants: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 rounded" />
+                  className="h-4 w-4 text-pink-600 rounded" />
                 <label htmlFor="hasVariants" className="text-sm font-medium text-gray-700">This product has variants (e.g. different colors)</label>
               </div>
 
@@ -364,7 +364,7 @@ function Products() {
                       <div className="flex justify-between items-center">
                         <h4 className="font-medium text-gray-900">Variants</h4>
                         <button type="button" onClick={() => setVariants([...variants, { name: '', colorCode: '', totalCartons: '', totalPieces: '' }])}
-                          className="text-sm text-indigo-600 hover:text-indigo-800">+ Add Variant</button>
+                          className="text-sm text-pink-600 hover:text-pink-800">+ Add Variant</button>
                       </div>
                       {variants.map((v, i) => (
                         <div key={i} className="flex items-end space-x-2 bg-white p-2 rounded border">
@@ -412,7 +412,7 @@ function Products() {
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={resetForm} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">{editingProduct ? 'Update' : 'Add Product'}</button>
+                <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">{editingProduct ? 'Update' : 'Add Product'}</button>
               </div>
             </form>
           </div>
@@ -445,7 +445,7 @@ function Products() {
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '', totalPieces: '' }) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700">Add Variant</button>
+                <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">Add Variant</button>
               </div>
             </form>
           </div>

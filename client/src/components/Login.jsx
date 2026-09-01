@@ -33,7 +33,7 @@ function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">📊 Sales Tracker</h1>
@@ -57,7 +57,7 @@ function Login() {
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
                 placeholder="Enter your name"
               />
             </div>
@@ -70,7 +70,7 @@ function Login() {
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
               placeholder="Enter your email"
             />
           </div>
@@ -82,7 +82,7 @@ function Login() {
               required
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
               placeholder="Enter your password"
               minLength="6"
             />
@@ -94,7 +94,7 @@ function Login() {
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition"
               >
                 <option value="SALES_REP">Sales Representative</option>
                 <option value="MANAGER">Manager</option>
@@ -105,7 +105,7 @@ function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition disabled:opacity-50"
+            className="w-full bg-pink-600 text-white py-3 rounded-lg font-semibold hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition disabled:opacity-50"
           >
             {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Sign In'}
           </button>
@@ -117,7 +117,7 @@ function Login() {
               setIsRegister(!isRegister)
               setError('')
             }}
-            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+            className="text-pink-600 hover:text-pink-800 text-sm font-medium"
           >
             {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Register"}
           </button>

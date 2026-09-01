@@ -239,7 +239,7 @@ function Sales() {
                   {sale.items?.map((item, idx) => (
                     <div key={idx} className={!item.product ? 'italic text-gray-400' : 'mb-1'}>
                       <span className="font-medium">{item.product?.name || item.productName || 'Deleted'}</span>
-                      {item.variant && <span className="text-indigo-600 ml-1">({item.variant.name})</span>}
+                      {item.variant && <span className="text-pink-600 ml-1">({item.variant.name})</span>}
                       <span className="text-gray-500 ml-1">— {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} @ N{Number(item.totalPrice).toLocaleString()}</span>
                     </div>
                   ))}
@@ -295,12 +295,12 @@ function Sales() {
                   <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     {filteredProducts.map((product) => (
                       <div key={product.id} onClick={() => handleProductSelect(product)}
-                        className={`px-4 py-3 cursor-pointer hover:bg-indigo-50 border-b border-gray-100 last:border-0 ${formData.productId === product.id.toString() ? 'bg-indigo-100' : ''}`}>
+                        className={`px-4 py-3 cursor-pointer hover:bg-pink-50 border-b border-gray-100 last:border-0 ${formData.productId === product.id.toString() ? 'bg-pink-100' : ''}`}>
                         <div className="flex justify-between items-center">
                           <div>
                             <p className="font-medium text-gray-900">{product.name}</p>
                             {product.colorCode && <p className="text-xs text-gray-500">Color: {product.colorCode}</p>}
-                            {product.hasVariants && <span className="text-xs bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded">{product.variants?.length || 0} variants</span>}
+                            {product.hasVariants && <span className="text-xs bg-pink-100 text-pink-800 px-1.5 py-0.5 rounded">{product.variants?.length || 0} variants</span>}
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-medium text-green-600">N{product.price.toLocaleString()}/pc</p>

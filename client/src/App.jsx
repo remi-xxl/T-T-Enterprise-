@@ -74,7 +74,7 @@ function ManagerLoginModal({ onClose }) {
             <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
               Cancel
             </button>
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+            <button type="submit" disabled={loading} className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </div>
@@ -116,7 +116,7 @@ function RoleSelector() {
                   onClick={handleManagerClick}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                     currentRole === 'MANAGER' && managerLoggedIn
-                      ? 'bg-indigo-600 text-white' 
+                      ? 'bg-pink-600 text-white' 
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -154,35 +154,35 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <nav className="bg-indigo-600 text-white shadow-lg">
+      <nav className="bg-pink-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4">
             <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-2 lg:h-16 lg:py-0">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-8">
               <Link to="/" className="text-xl font-bold">T&T ENTERPRISES</Link>
               <div className="flex flex-wrap gap-x-1 gap-y-1 sm:gap-x-2">
                 {isManager && (
-                  <Link to="/" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                  <Link to="/" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                     Dashboard
                   </Link>
                 )}
-                <Link to="/sales" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                <Link to="/sales" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                   {isSalesRep ? 'Record Sale' : 'Retail Sales'}
                 </Link>
-                <Link to="/wholesale" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                <Link to="/wholesale" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                   Wholesale
                 </Link>
                 {isManager && (
                   <>
-                    <Link to="/products" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                    <Link to="/products" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Products
                     </Link>
-                    <Link to="/inventory" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                    <Link to="/inventory" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Inventory
                     </Link>
-                    <Link to="/reports" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                    <Link to="/reports" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Monthly Report
                     </Link>
-                    <Link to="/admin" className="hover:text-indigo-200 px-2 py-1.5 rounded-md text-sm font-medium">
+                    <Link to="/admin" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
                       Admin
                     </Link>
                   </>
@@ -191,7 +191,7 @@ function AppContent() {
             </div>
             <div className="flex items-center">
               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                isManager ? 'bg-indigo-800 text-indigo-100' : 'bg-green-800 text-green-100'
+                isManager ? 'bg-pink-800 text-pink-100' : 'bg-green-800 text-green-100'
               }`}>
                 {isManager ? 'Manager Mode' : 'Sales Rep Mode'}
               </span>

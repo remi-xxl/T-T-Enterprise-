@@ -62,7 +62,7 @@ function Inventory() {
             <h4 className="font-medium text-gray-900">{title}</h4>
           </div>
           <button onClick={() => { setEditingInventory(editId); setEditingType(editType); setNewPieces(inventory?.totalPieces?.toString() || '') }}
-            className="text-indigo-600 hover:text-indigo-900 text-sm">Edit</button>
+            className="text-pink-600 hover:text-pink-900 text-sm">Edit</button>
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-gray-600">Cartons:</span><span className="font-medium">{inventory?.remainingCartons || 0} / {inventory?.totalCartons || 0}</span></div>
@@ -88,7 +88,7 @@ function Inventory() {
             <div className="flex space-x-2">
               <input type="number" min="0" value={newPieces} onChange={(e) => setNewPieces(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
-              <button onClick={handleUpdateInventory} className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700">Save</button>
+              <button onClick={handleUpdateInventory} className="px-3 py-2 bg-pink-600 text-white rounded-md text-sm hover:bg-pink-700">Save</button>
               <button onClick={() => { setEditingInventory(null); setEditingType(null); setNewPieces('') }}
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Cancel</button>
             </div>
@@ -109,7 +109,7 @@ function Inventory() {
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
               {product.colorCode && <p className="text-sm text-gray-500">Color: {product.colorCode}</p>}
-              {product.hasVariants && <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Has Variants</span>}
+              {product.hasVariants && <span className="text-xs bg-pink-100 text-pink-800 px-2 py-0.5 rounded-full">Has Variants</span>}
             </div>
             {product.hasVariants ? (
               <div className="space-y-3">

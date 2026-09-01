@@ -95,7 +95,7 @@ function MonthlyReport() {
             </select>
           </div>
           <div className="flex items-end">
-            <button onClick={generateReport} disabled={loading} className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50">
+            <button onClick={generateReport} disabled={loading} className="w-full bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 disabled:opacity-50">
               {loading ? 'Generating...' : 'Generate Report'}
             </button>
           </div>
@@ -109,9 +109,9 @@ function MonthlyReport() {
               {getMonthName(report.period.month)} {report.period.year} Summary
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-indigo-50 rounded-lg">
+              <div className="text-center p-4 bg-pink-50 rounded-lg">
                 <p className="text-sm text-gray-500">Total Revenue</p>
-                <p className="text-2xl font-bold text-indigo-600">N{report.summary.totalRevenue.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-pink-600">N{report.summary.totalRevenue.toLocaleString()}</p>
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <p className="text-sm text-gray-500">Total Pieces Sold</p>
@@ -181,7 +181,7 @@ function MonthlyReport() {
                       {sale.items?.map((item, idx) => (
                         <div key={idx} className={!item.product ? 'italic text-gray-400' : 'mb-1'}>
                           <span className="font-medium">{item.product?.name || item.productName || 'Deleted Product'}</span>
-                          {item.variant && <span className="text-indigo-600 ml-1">({item.variant.name})</span>}
+                          {item.variant && <span className="text-pink-600 ml-1">({item.variant.name})</span>}
                           <span className="text-gray-500 ml-1">— {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} @ N{Number(item.totalPrice).toLocaleString()}</span>
                         </div>
                       ))}
