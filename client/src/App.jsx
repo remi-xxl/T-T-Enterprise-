@@ -36,52 +36,56 @@ function ManagerLoginModal({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-32 mx-auto p-6 border w-96 shadow-lg rounded-md bg-white">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Manager Login</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">X</button>
-        </div>
-        
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
-        )}
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+      <div className="min-h-full flex items-center justify-center p-4">
+        <div className="relative w-full max-w-md bg-white rounded-lg shadow-lg">
+          <div className="p-5 sm:p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Manager Login</h3>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Close">X</button>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              placeholder="admin@store.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              placeholder="Enter password"
-            />
-          </div>
-          <div className="flex justify-end space-x-3 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
-              {loading ? 'Logging in...' : 'Login'}
-            </button>
-          </div>
-        </form>
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
+            )}
 
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500">Default: admin@store.com</p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  placeholder="admin@store.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  placeholder="Enter password"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
+                  {loading ? 'Logging in...' : 'Login'}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500">Default: admin@store.com</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -135,7 +139,7 @@ function RoleSelector() {
               </div>
             </div>
             {managerLoggedIn && (
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="text-sm text-gray-600">Logged in as: <span className="font-medium">{managerInfo?.name}</span></span>
                 <button onClick={managerLogout} className="text-sm text-red-600 hover:text-red-800">Logout</button>
               </div>
@@ -150,53 +154,82 @@ function RoleSelector() {
 }
 
 function AppContent() {
-  const { isManager, isSalesRep, managerLoggedIn } = useRole()
+  const { isManager, isSalesRep } = useRole()
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const closeMenu = () => setMenuOpen(false)
+
+  const salesLabel = isSalesRep ? 'Record Sale' : 'Retail Sales'
+  const links = [
+    { to: '/', label: 'Dashboard', managerOnly: true },
+    { to: '/sales', label: salesLabel },
+    { to: '/wholesale', label: 'Wholesale' },
+    { to: '/products', label: 'Products', managerOnly: true },
+    { to: '/inventory', label: 'Inventory', managerOnly: true },
+    { to: '/reports', label: 'Monthly Report', managerOnly: true },
+    { to: '/admin', label: 'Admin', managerOnly: true }
+  ]
+  const navLinks = links.filter(link => !link.managerOnly || isManager)
 
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-pink-600 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4">
-            <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:py-2 lg:h-16 lg:py-0">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-8">
-              <Link to="/" className="text-xl font-bold">T&T ENTERPRISES</Link>
-              <div className="flex flex-wrap gap-x-1 gap-y-1 sm:gap-x-2">
-                {isManager && (
-                  <Link to="/" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                    Dashboard
-                  </Link>
-                )}
-                <Link to="/sales" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                  {isSalesRep ? 'Record Sale' : 'Retail Sales'}
+        <div className="max-w-7xl mx-auto px-3 sm:px-4">
+          <div className="flex items-center justify-between h-14 lg:h-16">
+            <Link to="/" onClick={closeMenu} className="text-lg sm:text-xl font-bold tracking-wide whitespace-nowrap">
+              T&amp;T ENTERPRISES
+            </Link>
+
+            <div className="hidden lg:flex items-center">
+              {navLinks.map((link) => (
+                <Link key={link.to} to={link.to} className="hover:text-pink-200 hover:bg-pink-700/40 px-2 lg:px-3 py-2 rounded-md text-sm font-medium">
+                  {link.label}
                 </Link>
-                <Link to="/wholesale" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                  Wholesale
-                </Link>
-                {isManager && (
-                  <>
-                    <Link to="/products" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                      Products
-                    </Link>
-                    <Link to="/inventory" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                      Inventory
-                    </Link>
-                    <Link to="/reports" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                      Monthly Report
-                    </Link>
-                    <Link to="/admin" className="hover:text-pink-200 px-2 py-1.5 rounded-md text-sm font-medium">
-                      Admin
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              ))}
+              <span className={`ml-3 px-3 py-1 rounded-full text-xs font-medium ${
                 isManager ? 'bg-pink-800 text-pink-100' : 'bg-green-800 text-green-100'
               }`}>
                 {isManager ? 'Manager Mode' : 'Sales Rep Mode'}
               </span>
             </div>
+
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="lg:hidden p-2 -mr-1 rounded-md hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              aria-label="Toggle navigation menu"
+              aria-expanded={menuOpen}
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                {menuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
           </div>
+
+          {menuOpen && (
+            <div className="lg:hidden pb-3 border-t border-pink-500 pt-2 space-y-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={closeMenu}
+                  className="block px-3 py-2.5 rounded-md text-sm font-medium hover:bg-pink-700/50"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="pt-2 mt-1 border-t border-pink-500/50">
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                  isManager ? 'bg-pink-800 text-pink-100' : 'bg-green-800 text-green-100'
+                }`}>
+                  {isManager ? 'Manager Mode' : 'Sales Rep Mode'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
       
@@ -204,7 +237,7 @@ function AppContent() {
       
       <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
         <Routes>
-          <Route path="/" element={isManager ? <Dashboard /> : (managerLoggedIn ? <Navigate to="/sales" /> : <Navigate to="/sales" />)} />
+          <Route path="/" element={isManager ? <Dashboard /> : <Navigate to="/sales" />} />
           <Route path="/products" element={isManager ? <Products /> : <Navigate to="/sales" />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/wholesale" element={<WholesaleSales />} />

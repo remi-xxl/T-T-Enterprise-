@@ -58,10 +58,10 @@ function MonthlyReport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Monthly Sales Report</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Monthly Sales Report</h1>
         {report && (
-          <button onClick={printReport} className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+          <button onClick={printReport} className="w-full sm:w-auto bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
             Print Report
           </button>
         )}
@@ -160,7 +160,7 @@ function MonthlyReport() {
             <div className="p-6 border-b">
               <h3 className="text-lg font-semibold text-gray-900">Transaction Details</h3>
             </div>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -206,6 +206,37 @@ function MonthlyReport() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="md:hidden divide-y divide-gray-200">
+            {report.sales.map((sale) => (
+              <div key={sale.id} className="p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{new Date(sale.saleDate).toLocaleDateString()}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">by {sale.user?.name || '-'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-green-600">N{sale.totalAmount.toLocaleString()}</div>
+                    <div className="text-[11px] text-gray-400">{sale.totalQuantity} pcs</div>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {sale.items?.map((item, idx) => (
+                    <div key={idx} className="text-sm">
+                      <span className="font-medium text-gray-900">{item.product?.name || item.productName || 'Deleted Product'}</span>
+                      {item.variant && <span className="text-pink-600 ml-1">({item.variant.name})</span>}
+                      <div className="text-xs text-gray-500">
+                        {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} — N{Number(item.totalPrice).toLocaleString()}
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${item.saleType === 'carton' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                          {item.saleType}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2">{getPaymentBadge(sale.paymentMode)}</div>
+              </div>
+            ))}
           </div>
           </div>
         </div>

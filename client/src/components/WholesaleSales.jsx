@@ -551,10 +551,10 @@ function WholesaleSales() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Wholesale Sales</h1>
-        <div className="flex flex-col gap-2 sm:flex-row sm:space-x-3">
-          <button onClick={() => setShowCustomerModal(true)} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">+ Add Customer</button>
-          <button onClick={() => setShowModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ New Wholesale Sale</button>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Wholesale Sales</h1>
+        <div className="flex flex-col gap-2 sm:flex-row sm:space-x-3 sm:items-center">
+          <button onClick={() => setShowCustomerModal(true)} className="w-full sm:w-auto bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">+ Add Customer</button>
+          <button onClick={() => setShowModal(true)} className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ New Wholesale Sale</button>
         </div>
       </div>
 
@@ -572,16 +572,16 @@ function WholesaleSales() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <input type="date" value={filterDate.startDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, startDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.startDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, startDate: e.target.value }) }} className="mt-1 block w-full sm:w-auto border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700">End Date</label>
-              <input type="date" value={filterDate.endDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, endDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.endDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, endDate: e.target.value }) }} className="mt-1 block w-full sm:w-auto border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
-            <button onClick={handleFilter} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
+            <button onClick={handleFilter} className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
           </div>
         </div>
       )}
@@ -613,7 +613,7 @@ function WholesaleSales() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="p-4 border-b"><h2 className="text-lg font-semibold text-gray-900">All Wholesale Sales</h2></div>
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -660,6 +660,42 @@ function WholesaleSales() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="md:hidden divide-y divide-gray-200">
+          {sales.map((sale) => (
+            <div key={sale.id} className="p-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">{new Date(sale.saleDate).toLocaleDateString()}</div>
+                  <div className="text-sm text-gray-600 mt-0.5">{sale.customer?.name || '-'}</div>
+                  {isManager && <div className="text-xs text-gray-500 mt-0.5">by {sale.user?.name || '-'}</div>}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-green-600">N{sale.totalAmount.toLocaleString()}</div>
+                  <div className="text-[11px] text-gray-400">{sale.totalQuantity} pcs</div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {sale.items?.map((item, idx) => (
+                  <div key={idx} className="text-sm">
+                    <span className="font-medium text-gray-900">{item.product?.name || item.productName || 'Deleted'}</span>
+                    {item.variant && <span className="text-pink-600 ml-1">({item.variant.name})</span>}
+                    {item.priceAdjusted && <span className="ml-1 px-1 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-semibold uppercase">Adj</span>}
+                    <div className="text-xs text-gray-500">
+                      {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} — N{Number(item.totalPrice).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  {getPaymentBadge(sale.paymentMode)}
+                </div>
+                <button type="button" onClick={() => printReceipt(sale)} className="px-3 py-1.5 bg-pink-600 text-white rounded-md text-xs hover:bg-pink-700">Print Receipt</button>
+              </div>
+            </div>
+          ))}
         </div>
         {sales.length === 0 && <div className="text-center py-8"><p className="text-gray-500">No wholesale sales recorded yet</p></div>}
       </div>
@@ -919,7 +955,7 @@ function WholesaleSales() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-x-reverse pt-4">
                 <button type="button" onClick={() => { setShowModal(false); resetForm() }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
                   {submitting ? 'Recording...' : 'Record Sale'}
@@ -931,8 +967,10 @@ function WholesaleSales() {
       )}
 
       {showCustomerModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-md bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add New Customer</h3>
               <button onClick={() => setShowCustomerModal(false)} className="text-gray-400 hover:text-gray-600">X</button>
@@ -955,14 +993,18 @@ function WholesaleSales() {
                 <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700">Add Customer</button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {showCustomerDetail && customerPurchases && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-[700px] shadow-lg rounded-md bg-white">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-[700px] bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
               <h3 className="text-lg font-semibold">{customerPurchases.customer.name} - Purchase History</h3>
               <button onClick={() => { setShowCustomerDetail(false); setSelectedCustomer(null); setCustomerPurchases(null) }} className="text-gray-400 hover:text-gray-600">X</button>
             </div>
@@ -1010,6 +1052,8 @@ function WholesaleSales() {
             </div>
             <div className="flex justify-end pt-4">
               <button onClick={() => { setShowCustomerDetail(false); setSelectedCustomer(null); setCustomerPurchases(null) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Close</button>
+            </div>
+              </div>
             </div>
           </div>
         </div>

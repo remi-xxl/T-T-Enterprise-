@@ -85,12 +85,14 @@ function Inventory() {
         {editingInventory === editId && (
           <div className="mt-3 p-3 bg-gray-50 rounded-lg">
             <label className="block text-sm font-medium text-gray-700 mb-2">Update Total Pieces</label>
-            <div className="flex space-x-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:space-x-2">
               <input type="number" min="0" value={newPieces} onChange={(e) => setNewPieces(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
-              <button onClick={handleUpdateInventory} className="px-3 py-2 bg-pink-600 text-white rounded-md text-sm hover:bg-pink-700">Save</button>
-              <button onClick={() => { setEditingInventory(null); setEditingType(null); setNewPieces('') }}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Cancel</button>
+                className="w-full sm:flex-1 border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
+              <div className="flex gap-2">
+                <button onClick={handleUpdateInventory} className="flex-1 sm:flex-none px-3 py-2 bg-pink-600 text-white rounded-md text-sm hover:bg-pink-700">Save</button>
+                <button onClick={() => { setEditingInventory(null); setEditingType(null); setNewPieces('') }}
+                  className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">Cancel</button>
+              </div>
             </div>
           </div>
         )}
@@ -102,7 +104,7 @@ function Inventory() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventory Management</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
           <div key={product.id} className="bg-white rounded-lg shadow p-6">

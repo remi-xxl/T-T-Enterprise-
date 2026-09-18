@@ -27,45 +27,45 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center">
-            <div className="p-3 bg-pink-100 rounded-full"><span className="text-2xl">📦</span></div>
-            <div className="ml-4">
+            <div className="p-3 bg-pink-100 rounded-full shrink-0"><span className="text-2xl">📦</span></div>
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Total Products</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats?.totalProducts || 0}</p>
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900">{stats?.totalProducts || 0}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-full"><span className="text-2xl">💰</span></div>
-            <div className="ml-4">
+            <div className="p-3 bg-green-100 rounded-full shrink-0"><span className="text-2xl">💰</span></div>
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Inventory Value</p>
-              <p className="text-2xl font-semibold text-gray-900">N{(stats?.totalInventoryValue || 0).toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900">N{(stats?.totalInventoryValue || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center">
-            <div className="p-3 bg-yellow-100 rounded-full"><span className="text-2xl">📈</span></div>
-            <div className="ml-4">
+            <div className="p-3 bg-yellow-100 rounded-full shrink-0"><span className="text-2xl">📈</span></div>
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Today's Sales</p>
-              <p className="text-2xl font-semibold text-gray-900">N{(stats?.todayStats?.revenue || 0).toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900">N{(stats?.todayStats?.revenue || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
           <div className="flex items-center">
-            <div className="p-3 bg-red-100 rounded-full"><span className="text-2xl">⚠️</span></div>
-            <div className="ml-4">
+            <div className="p-3 bg-red-100 rounded-full shrink-0"><span className="text-2xl">⚠️</span></div>
+            <div className="ml-4 flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-500">Low Stock Items</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats?.lowStockProducts?.length || 0}</p>
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900">{stats?.lowStockProducts?.length || 0}</p>
             </div>
           </div>
         </div>

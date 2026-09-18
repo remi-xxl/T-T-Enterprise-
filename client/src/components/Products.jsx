@@ -191,19 +191,19 @@ function Products() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Products</h1>
-        <div className="flex space-x-3">
-          <button onClick={() => setShowBulkModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Bulk Upload</button>
-          <button onClick={() => setShowModal(true)} className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700">+ Add Product</button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Products</h1>
+        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-3">
+          <button onClick={() => setShowBulkModal(true)} className="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700">Bulk Upload</button>
+          <button onClick={() => setShowModal(true)} className="w-full sm:w-auto bg-pink-600 text-white px-4 py-2.5 rounded-lg hover:bg-pink-700">+ Add Product</button>
           {products.length > 0 && (
-            <button onClick={handleDeleteAll} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Delete All</button>
+            <button onClick={handleDeleteAll} className="w-full sm:w-auto bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700">Delete All</button>
           )}
         </div>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -256,12 +256,58 @@ function Products() {
           </tbody>
         </table>
         </div>
+
+        <div className="md:hidden divide-y divide-gray-200">
+          {products.map((product) => {
+            const stockStatus = getStockDisplay(product)
+            return (
+              <div key={product.id} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-gray-900 break-words">{product.name}</div>
+                    {product.colorCode && <div className="text-xs text-gray-500">Color: {product.colorCode}</div>}
+                    {product.hasVariants && <span className="text-xs bg-pink-100 text-pink-800 px-2 py-0.5 rounded-full inline-block mt-0.5">Has Variants</span>}
+                    <div className="text-sm text-gray-700 mt-1">N{product.price.toLocaleString()}/pc</div>
+                  </div>
+                  <span className={`shrink-0 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stockStatus.color}`}>{stockStatus.text}</span>
+                </div>
+                <div className="mt-2 text-sm text-gray-900">
+                  {product.hasVariants ? (
+                    <div className="space-y-1">
+                      {product.variants?.length === 0 && <span className="text-gray-400 italic text-xs">No variants yet</span>}
+                      {product.variants?.map((v) => (
+                        <div key={v.id} className="flex justify-between items-center bg-gray-50 rounded px-2 py-1 text-xs">
+                          <span className="truncate">{v.name} {v.colorCode && `(${v.colorCode})`}</span>
+                          <span className="shrink-0 ml-2">{v.inventory?.remainingCartons || 0}c / {v.inventory?.remainingPieces || 0}p</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center bg-gray-50 rounded px-2 py-1 text-xs">
+                      <span>Stock</span>
+                      <span>{product.inventory?.remainingCartons || 0} cartons / {product.inventory?.remainingPieces || 0} pieces</span>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium">
+                  {product.hasVariants && (
+                    <button onClick={() => { setAddingVariantTo(product); setShowVariantModal(true) }} className="text-green-600 hover:text-green-900">+ Variant</button>
+                  )}
+                  <button onClick={() => handleEdit(product)} className="text-pink-600 hover:text-pink-900">Edit</button>
+                  <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
         {products.length === 0 && <div className="text-center py-12"><p className="text-gray-500">No products yet</p></div>}
       </div>
 
       {showBulkModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-[500px] shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-[500px] bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Bulk Upload Products</h3>
               <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setUploadResult(null) }} className="text-gray-400 hover:text-gray-600">X</button>
@@ -307,9 +353,11 @@ function Products() {
                   )}
                 </div>
               )}
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-x-reverse pt-4">
                 <button onClick={() => { setShowBulkModal(false); setBulkFile(null); setUploadResult(null) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button onClick={handleBulkUpload} disabled={!bulkFile || uploading} className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50">{uploading ? 'Uploading...' : 'Upload Products'}</button>
+              </div>
+            </div>
               </div>
             </div>
           </div>
@@ -317,8 +365,10 @@ function Products() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-[520px] shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-[520px] bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{editingProduct ? 'Edit Product' : 'Add New Product'}</h3>
               <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">X</button>
@@ -328,7 +378,7 @@ function Products() {
                 <label className="block text-sm font-medium text-gray-700">Product Name *</label>
                 <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Price per Piece (N) *</label>
                   <input type="number" required step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
@@ -338,7 +388,7 @@ function Products() {
                   <input type="number" required value={formData.piecesPerCarton} onChange={(e) => setFormData({ ...formData, piecesPerCarton: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Color Code</label>
                   <input type="text" value={formData.colorCode} onChange={(e) => setFormData({ ...formData, colorCode: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="Optional" />
@@ -367,33 +417,33 @@ function Products() {
                           className="text-sm text-pink-600 hover:text-pink-800">+ Add Variant</button>
                       </div>
                       {variants.map((v, i) => (
-                        <div key={i} className="flex items-end space-x-2 bg-white p-2 rounded border">
-                          <div className="flex-1">
+                        <div key={i} className="grid grid-cols-2 gap-2 items-end bg-white p-2 rounded border sm:flex sm:items-end sm:space-x-2">
+                          <div className="col-span-2 min-w-0 sm:flex-1">
                             <label className="block text-xs text-gray-500">Name *</label>
                             <input type="text" required value={v.name}
                               onChange={(e) => { const nv = [...variants]; nv[i].name = e.target.value; setVariants(nv) }}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="e.g. Color 1" />
                           </div>
-                          <div className="w-20">
+                          <div className="min-w-0 sm:w-20">
                             <label className="block text-xs text-gray-500">Color Code</label>
                             <input type="text" value={v.colorCode}
                               onChange={(e) => { const nv = [...variants]; nv[i].colorCode = e.target.value; setVariants(nv) }}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
-                          <div className="w-20">
+                          <div className="min-w-0 sm:w-20">
                             <label className="block text-xs text-gray-500">Cartons</label>
                             <input type="number" value={v.totalCartons}
                               onChange={(e) => { const nv = [...variants]; nv[i].totalCartons = e.target.value; setVariants(nv) }}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
-                          <div className="w-20">
+                          <div className="min-w-0 sm:w-20">
                             <label className="block text-xs text-gray-500">Pieces</label>
                             <input type="number" min="0" value={v.totalPieces}
                               onChange={(e) => { const nv = [...variants]; nv[i].totalPieces = e.target.value; setVariants(nv) }}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
                           {variants.length > 1 && (
-                            <button type="button" onClick={() => setVariants(variants.filter((_, j) => j !== i))} className="text-red-600 text-sm">X</button>
+                            <button type="button" onClick={() => setVariants(variants.filter((_, j) => j !== i))} className="col-span-2 sm:col-span-1 text-red-600 text-sm justify-self-end sm:mb-1.5">X</button>
                           )}
                         </div>
                       ))}
@@ -402,7 +452,7 @@ function Products() {
               ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">{editingProduct ? 'Total Stock' : 'Initial Stock'}</label>
-                  <div className="grid grid-cols-2 gap-3 mt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
                     <input type="number" min="0" value={formData.totalCartons} onChange={(e) => { setStockChanged(true); setFormData({ ...formData, totalCartons: e.target.value }) }} placeholder="Cartons" className="block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                     <input type="number" min="0" value={formData.totalPieces} onChange={(e) => { setStockChanged(true); setFormData({ ...formData, totalPieces: e.target.value }) }} placeholder="Pieces (overrides cartons)" className="block w-full border border-gray-300 rounded-md shadow-sm p-2" />
                   </div>
@@ -410,18 +460,22 @@ function Products() {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-x-reverse pt-4">
                 <button type="button" onClick={resetForm} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">{editingProduct ? 'Update' : 'Add Product'}</button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {showVariantModal && addingVariantTo && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-md bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Add Variant to {addingVariantTo.name}</h3>
               <button onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '', totalPieces: '' }) }} className="text-gray-400 hover:text-gray-600">X</button>
@@ -443,11 +497,13 @@ function Products() {
                 <label className="block text-sm font-medium text-gray-700">Initial Pieces</label>
                 <input type="number" min="0" value={variantForm.totalPieces} onChange={(e) => setVariantForm({ ...variantForm, totalPieces: e.target.value })} placeholder="Use this for loose pieces; it overrides cartons" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-x-reverse pt-4">
                 <button type="button" onClick={() => { setShowVariantModal(false); setAddingVariantTo(null); setVariantForm({ name: '', colorCode: '', totalCartons: '', totalPieces: '' }) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">Add Variant</button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

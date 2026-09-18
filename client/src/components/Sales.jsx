@@ -200,9 +200,9 @@ function Sales() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">{isManager ? 'All Sales' : 'Record Sale'}</h1>
-        <button onClick={() => setShowModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">+ New Sale</button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{isManager ? 'All Sales' : 'Record Sale'}</h1>
+        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700">+ New Sale</button>
       </div>
 
       {isManager && (
@@ -219,16 +219,16 @@ function Sales() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700">Start Date</label>
-              <input type="date" value={filterDate.startDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, startDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.startDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, startDate: e.target.value }) }} className="mt-1 block w-full sm:w-auto border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-sm font-medium text-gray-700">End Date</label>
-              <input type="date" value={filterDate.endDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, endDate: e.target.value }) }} className="mt-1 block border border-gray-300 rounded-md shadow-sm p-2" />
+              <input type="date" value={filterDate.endDate} onChange={(e) => { setQuickRange('custom'); setFilterDate({ ...filterDate, endDate: e.target.value }) }} className="mt-1 block w-full sm:w-auto border border-gray-300 rounded-md shadow-sm p-2" />
             </div>
-            <button onClick={handleFilter} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
+            <button onClick={handleFilter} className="w-full sm:w-auto px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">Filter</button>
           </div>
         </div>
       )}
@@ -241,7 +241,7 @@ function Sales() {
       )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -288,14 +288,48 @@ function Sales() {
           </tbody>
         </table>
         </div>
+
+        <div className="md:hidden divide-y divide-gray-200">
+          {(isManager ? sales : todaySales).map((sale) => (
+            <div key={sale.id} className="p-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <div className="text-sm font-semibold text-gray-900">{new Date(sale.saleDate).toLocaleDateString()}</div>
+                  {isManager && <div className="text-xs text-gray-500 mt-0.5">by {sale.user?.name || '-'}</div>}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-green-600">N{sale.totalAmount.toLocaleString()}</div>
+                  <div className="text-[11px] text-gray-400">{sale.totalQuantity} pcs</div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {sale.items?.map((item, idx) => (
+                  <div key={idx} className="text-sm">
+                    <span className="font-medium text-gray-900">{item.product?.name || item.productName || 'Deleted'}</span>
+                    {item.variant && <span className="text-pink-600 ml-1">({item.variant.name})</span>}
+                    <div className="text-xs text-gray-500 pl-0">
+                      {item.quantity} {item.saleType}{item.quantity > 1 ? 's' : ''} — N{Number(item.totalPrice).toLocaleString()}
+                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${item.saleType === 'carton' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                        {item.saleType}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2">{getPaymentBadge(sale.paymentMode)}</div>
+            </div>
+          ))}
+        </div>
         {(isManager ? sales : todaySales).length === 0 && (
           <div className="text-center py-12"><p className="text-gray-500">No sales recorded yet</p></div>
         )}
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-[480px] shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-[480px] bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Record New Sale</h3>
               <button onClick={() => { setShowModal(false); setProductSearch('') }} className="text-gray-400 hover:text-gray-600">X</button>
@@ -420,6 +454,8 @@ function Sales() {
                 </button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

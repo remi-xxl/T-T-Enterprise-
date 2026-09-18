@@ -59,15 +59,15 @@ function Admin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Manage Sales Reps</h1>
-        <button onClick={() => setShowModal(true)} className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Manage Sales Reps</h1>
+        <button onClick={() => setShowModal(true)} className="w-full sm:w-auto bg-pink-600 text-white px-4 py-2.5 rounded-lg hover:bg-pink-700">
           + Add Sales Rep
         </button>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -92,14 +92,29 @@ function Admin() {
           </tbody>
         </table>
         </div>
+        <div className="md:hidden divide-y divide-gray-200">
+          {salesReps.map((rep) => (
+            <div key={rep.id} className="p-4">
+              <div className="text-sm font-semibold text-gray-900 break-words">{rep.name}</div>
+              <div className="text-sm text-gray-500 break-words">{rep.email}</div>
+              <div className="text-xs text-gray-400 mt-0.5">Added {new Date(rep.createdAt).toLocaleDateString()}</div>
+              <div className="mt-2 flex gap-4 text-sm font-medium">
+                <button onClick={() => handleEdit(rep)} className="text-pink-600 hover:text-pink-900">Edit</button>
+                <button onClick={() => handleDelete(rep.id)} className="text-red-600 hover:text-red-900">Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
         {salesReps.length === 0 && (
           <div className="text-center py-12"><p className="text-gray-500">No sales reps added yet</p></div>
         )}
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto z-50">
+          <div className="min-h-full flex items-start justify-center p-3 sm:p-6">
+            <div className="relative w-full max-w-md bg-white rounded-lg shadow-lg">
+              <div className="p-5 max-h-[calc(100vh-1.5rem)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">{editingRep ? 'Edit Sales Rep' : 'Add Sales Rep'}</h3>
               <button onClick={() => { setShowModal(false); setEditingRep(null) }} className="text-gray-400 hover:text-gray-600">X</button>
@@ -113,11 +128,13 @@ function Admin() {
                 <label className="block text-sm font-medium text-gray-700">Email *</label>
                 <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-3 sm:space-x-reverse pt-4">
                 <button type="button" onClick={() => { setShowModal(false); setEditingRep(null) }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">{editingRep ? 'Update' : 'Add'}</button>
               </div>
             </form>
+              </div>
+            </div>
           </div>
         </div>
       )}
