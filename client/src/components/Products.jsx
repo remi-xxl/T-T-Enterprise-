@@ -9,6 +9,8 @@ function Products() {
   const [showVariantModal, setShowVariantModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   const [stockChanged, setStockChanged] = useState(false)
+  const [search, setSearch] = useState('')
+  const [sortOption, setSortOption] = useState('default')
   const [addingVariantTo, setAddingVariantTo] = useState(null)
   const [bulkFile, setBulkFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -189,6 +191,23 @@ function Products() {
 
   if (loading) return <div className="flex justify-center items-center h-64"><div className="text-gray-500">Loading...</div></div>
 
+  const filteredProducts = products
+    .filter((product) => {
+      const q = search.toLowerCase().trim()
+      if (!q) return true
+      const variantMatch = product.variants?.some(v =>
+        v.name.toLowerCase().includes(q) || (v.colorCode && v.colorCode.toLowerCase().includes(q))
+      )
+      return product.name.toLowerCase().includes(q) ||
+        (product.colorCode && product.colorCode.toLowerCase().includes(q)) ||
+        variantMatch
+    })
+    .sort((a, b) => {
+      if (sortOption === 'az') return a.name.localeCompare(b.name)
+      if (sortOption === 'za') return b.name.localeCompare(a.name)
+      return 0
+    })
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -200,6 +219,25 @@ function Products() {
             <button onClick={handleDeleteAll} className="w-full sm:w-auto bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700">Delete All</button>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, color code, or variant..."
+          className="flex-1 w-full border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-600"
+        />
+        <select
+          value={sortOption}
+          onChange={(e) => setSortOption(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm shadow-sm bg-white"
+        >
+          <option value="default">Default order</option>
+          <option value="az">Name A-Z</option>
+          <option value="za">Name Z-A</option>
+        </select>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -215,7 +253,7 @@ function Products() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {products.map((product) => {
+            {filteredProducts.map((product) => {
               const stockStatus = getStockDisplay(product)
               return (
                 <tr key={product.id}>
@@ -258,7 +296,7 @@ function Products() {
         </div>
 
         <div className="md:hidden divide-y divide-gray-200">
-          {products.map((product) => {
+          {filteredProducts.map((product) => {
             const stockStatus = getStockDisplay(product)
             return (
               <div key={product.id} className="p-4">
@@ -301,6 +339,7 @@ function Products() {
           })}
         </div>
         {products.length === 0 && <div className="text-center py-12"><p className="text-gray-500">No products yet</p></div>}
+        {products.length > 0 && filteredProducts.length === 0 && <div className="text-center py-12"><p className="text-gray-500">No products match your search</p></div>}
       </div>
 
       {showBulkModal && (

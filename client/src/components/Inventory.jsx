@@ -7,6 +7,8 @@ function Inventory() {
   const [editingInventory, setEditingInventory] = useState(null)
   const [editingType, setEditingType] = useState(null)
   const [newPieces, setNewPieces] = useState('')
+  const [search, setSearch] = useState('')
+  const [sortOption, setSortOption] = useState('default')
 
   useEffect(() => { fetchProducts() }, [])
 
@@ -102,11 +104,48 @@ function Inventory() {
 
   if (loading) return <div className="flex justify-center items-center h-64"><div className="text-gray-500">Loading...</div></div>
 
+  const filteredProducts = products
+    .filter((product) => {
+      const q = search.toLowerCase().trim()
+      if (!q) return true
+      const variantMatch = product.variants?.some(v =>
+        v.name.toLowerCase().includes(q) || (v.colorCode && v.colorCode.toLowerCase().includes(q))
+      )
+      return product.name.toLowerCase().includes(q) ||
+        (product.colorCode && product.colorCode.toLowerCase().includes(q)) ||
+        variantMatch
+    })
+    .sort((a, b) => {
+      if (sortOption === 'az') return a.name.localeCompare(b.name)
+      if (sortOption === 'za') return b.name.localeCompare(a.name)
+      return 0
+    })
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventory Management</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventory Management</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center w-full sm:w-auto">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, color code, or variant..."
+            className="flex-1 w-full sm:w-64 border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-600"
+          />
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2.5 text-sm shadow-sm bg-white"
+          >
+            <option value="default">Default order</option>
+            <option value="az">Name A-Z</option>
+            <option value="za">Name Z-A</option>
+          </select>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {products.map((product) => (
+        {filteredProducts.map((product) => (
           <div key={product.id} className="bg-white rounded-lg shadow p-6">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
@@ -131,6 +170,11 @@ function Inventory() {
       {products.length === 0 && (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <p className="text-gray-500">No products found. Add some products first.</p>
+        </div>
+      )}
+      {products.length > 0 && filteredProducts.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg shadow">
+          <p className="text-gray-500">No products match your search</p>
         </div>
       )}
     </div>
