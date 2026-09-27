@@ -161,7 +161,7 @@ function AppContent() {
 
   const salesLabel = isSalesRep ? 'Record Sale' : 'Retail Sales'
   const links = [
-    { to: '/', label: 'Dashboard', managerOnly: true },
+    { to: '/dashboard', label: 'Dashboard', managerOnly: true },
     { to: '/sales', label: salesLabel },
     { to: '/wholesale', label: 'Wholesale' },
     { to: '/products', label: 'Products', managerOnly: true },
@@ -237,13 +237,15 @@ function AppContent() {
       
       <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
         <Routes>
-          <Route path="/" element={isManager ? <Dashboard /> : <Navigate to="/sales" />} />
-          <Route path="/products" element={isManager ? <Products /> : <Navigate to="/sales" />} />
+          <Route path="/" element={<Navigate to="/sales" replace />} />
+          <Route path="/dashboard" element={isManager ? <Dashboard /> : <Navigate to="/sales" replace />} />
+          <Route path="/products" element={isManager ? <Products /> : <Navigate to="/sales" replace />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/wholesale" element={<WholesaleSales />} />
-          <Route path="/inventory" element={isManager ? <Inventory /> : <Navigate to="/sales" />} />
-          <Route path="/reports" element={isManager ? <MonthlyReport /> : <Navigate to="/sales" />} />
-          <Route path="/admin" element={isManager ? <Admin /> : <Navigate to="/sales" />} />
+          <Route path="/inventory" element={isManager ? <Inventory /> : <Navigate to="/sales" replace />} />
+          <Route path="/reports" element={isManager ? <MonthlyReport /> : <Navigate to="/sales" replace />} />
+          <Route path="/admin" element={isManager ? <Admin /> : <Navigate to="/sales" replace />} />
+          <Route path="*" element={<Navigate to="/sales" replace />} />
         </Routes>
       </main>
     </div>

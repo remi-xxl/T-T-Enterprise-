@@ -139,12 +139,26 @@ app.put('/api/salesreps/:id', async (req, res) => {
 });
 
 app.delete('/api/salesreps/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Invalid sales rep id' });
+  }
   try {
-    const { id } = req.params;
-    await prisma.sale.deleteMany({ where: { userId: parseInt(id) } });
-    await prisma.user.delete({ where: { id: parseInt(id) } });
+    const rep = await prisma.user.findUnique({ where: { id } });
+    if (!rep) return res.status(404).json({ error: 'Sales rep not found' });
+    if (rep.role !== 'SALES_REP') {
+      return res.status(400).json({ error: 'Cannot delete a non-sales-rep user' });
+    }
+
+    await prisma.$transaction([
+      prisma.saleItem.deleteMany({ where: { sale: { userId: id } } }),
+      prisma.sale.deleteMany({ where: { userId: id } }),
+      prisma.user.delete({ where: { id } }),
+    ]);
+
     res.json({ message: 'Sales rep deleted' });
   } catch (error) {
+    console.error('Delete sales rep failed:', error);
     res.status(500).json({ error: error.message });
   }
 });

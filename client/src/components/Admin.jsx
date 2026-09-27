@@ -45,12 +45,12 @@ function Admin() {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this sales rep?')) {
+    if (window.confirm('Are you sure you want to delete this sales rep? This will also delete all of their sales.')) {
       try {
         await axios.delete(`/api/salesreps/${id}`)
         fetchReps()
       } catch (error) {
-        alert('Error deleting sales rep')
+        alert(error.response?.data?.error || 'Error deleting sales rep')
       }
     }
   }
