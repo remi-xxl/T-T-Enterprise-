@@ -29,6 +29,7 @@ function Products() {
     try {
       const response = await axios.get('/api/products')
       setProducts(response.data)
+      return response.data
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -49,12 +50,15 @@ function Products() {
         totalCartons: editingProduct && !stockChanged ? undefined : (formData.totalCartons === '' ? undefined : parseInt(formData.totalCartons)),
         totalPieces: editingProduct && !stockChanged ? undefined : (formData.totalPieces === '' ? undefined : parseInt(formData.totalPieces)),
         variants: formData.hasVariants
-          ? variants.filter(v => v.name).map(v => ({
-              name: v.name,
-              colorCode: v.colorCode || null,
-              totalCartons: parseInt(v.totalCartons) || 0,
-              totalPieces: v.totalPieces === '' ? undefined : parseInt(v.totalPieces)
-            }))
+          ? variants
+              .map(v => ({ ...v, name: (v.name || '').trim() }))
+              .filter(v => v.name)
+              .map(v => ({
+                name: v.name,
+                colorCode: v.colorCode || null,
+                totalCartons: parseInt(v.totalCartons) || 0,
+                totalPieces: v.totalPieces === '' ? undefined : parseInt(v.totalPieces)
+              }))
           : []
       }
 
@@ -81,6 +85,7 @@ function Products() {
   const handleEdit = (product) => {
     setEditingProduct(product)
     setStockChanged(false)
+    setVariants([{ name: '', colorCode: '', totalCartons: '', totalPieces: '' }])
     setFormData({
       name: product.name,
       price: product.price.toString(),
@@ -142,13 +147,16 @@ function Products() {
   }
 
   const handleDeleteVariant = async (variantId) => {
-    if (window.confirm('Delete this variant? Sales history will be preserved.')) {
-      try {
-        await axios.delete(`/api/variants/${variantId}`)
-        fetchProducts()
-      } catch (error) {
-        console.error('Error deleting variant:', error)
+    if (!window.confirm('Delete this variant? Sales history will be preserved.')) return
+    try {
+      await axios.delete(`/api/variants/${variantId}`)
+      const fresh = await fetchProducts()
+      if (fresh && editingProduct) {
+        setEditingProduct(fresh.find((p) => p.id === editingProduct.id) || null)
       }
+    } catch (error) {
+      console.error('Error deleting variant:', error)
+      alert('Error deleting variant: ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -207,6 +215,11 @@ function Products() {
       if (sortOption === 'za') return b.name.localeCompare(a.name)
       return 0
     })
+
+  // Variants already persisted on the product being edited. They are shown as a
+  // read-only summary; only newly typed rows are sent to the server.
+  const existingVariants = editingProduct?.hasVariants ? (editingProduct.variants || []) : []
+  const hasLockedVariants = existingVariants.length > 0
 
   return (
     <div className="space-y-6">
@@ -282,9 +295,7 @@ function Products() {
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stockStatus.color}`}>{stockStatus.text}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    {product.hasVariants && (
-                      <button onClick={() => { setAddingVariantTo(product); setShowVariantModal(true) }} className="text-green-600 hover:text-green-900">+ Variant</button>
-                    )}
+                    <button onClick={() => { setAddingVariantTo(product); setShowVariantModal(true) }} className="text-green-600 hover:text-green-900">+ Variant</button>
                     <button onClick={() => handleEdit(product)} className="text-pink-600 hover:text-pink-900">Edit</button>
                     <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">Delete</button>
                   </td>
@@ -328,9 +339,7 @@ function Products() {
                   )}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm font-medium">
-                  {product.hasVariants && (
-                    <button onClick={() => { setAddingVariantTo(product); setShowVariantModal(true) }} className="text-green-600 hover:text-green-900">+ Variant</button>
-                  )}
+                  <button onClick={() => { setAddingVariantTo(product); setShowVariantModal(true) }} className="text-green-600 hover:text-green-900">+ Variant</button>
                   <button onClick={() => handleEdit(product)} className="text-pink-600 hover:text-pink-900">Edit</button>
                   <button onClick={() => handleDelete(product.id)} className="text-red-600 hover:text-red-900">Delete</button>
                 </div>
@@ -440,45 +449,65 @@ function Products() {
 
               <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                 <input type="checkbox" id="hasVariants" checked={formData.hasVariants}
-                  onChange={(e) => setFormData({ ...formData, hasVariants: e.target.checked })}
-                  className="h-4 w-4 text-pink-600 rounded" />
+                  disabled={hasLockedVariants}
+                  onChange={(e) => {
+                    setFormData({ ...formData, hasVariants: e.target.checked })
+                    if (e.target.checked) setVariants([{ name: '', colorCode: '', totalCartons: '', totalPieces: '' }])
+                  }}
+                  className="h-4 w-4 text-pink-600 rounded disabled:opacity-50" />
                 <label htmlFor="hasVariants" className="text-sm font-medium text-gray-700">This product has variants (e.g. different colors)</label>
               </div>
+              {hasLockedVariants && (
+                <p className="-mt-2 text-xs text-gray-500">Delete the existing variants below before turning variants off.</p>
+              )}
 
               {formData.hasVariants ? (
-                editingProduct ? (
-                  <p className="text-sm text-gray-500 bg-gray-50 rounded p-3">To update a variant's cartons or pieces, use the Inventory page and edit that specific variant.</p>
-                ) : (
                     <div className="border rounded-lg p-4 space-y-3">
                       <div className="flex justify-between items-center">
                         <h4 className="font-medium text-gray-900">Variants</h4>
                         <button type="button" onClick={() => setVariants([...variants, { name: '', colorCode: '', totalCartons: '', totalPieces: '' }])}
                           className="text-sm text-pink-600 hover:text-pink-800">+ Add Variant</button>
                       </div>
+
+                      {existingVariants.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-500">Already saved. Edit a variant's cartons or pieces on the Inventory page.</p>
+                          {existingVariants.map((v) => (
+                            <div key={v.id} className="flex justify-between items-center bg-gray-50 rounded px-2 py-1.5 text-sm">
+                              <span className="truncate">{v.name} {v.colorCode && `(${v.colorCode})`}</span>
+                              <span className="flex items-center gap-3 shrink-0 ml-2">
+                                <span className="text-xs text-gray-500">{v.inventory?.remainingCartons || 0}c / {v.inventory?.remainingPieces || 0}p</span>
+                                <button type="button" onClick={() => handleDeleteVariant(v.id)} className="text-red-600 text-xs hover:text-red-800">X</button>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       {variants.map((v, i) => (
                         <div key={i} className="grid grid-cols-2 gap-2 items-end bg-white p-2 rounded border sm:flex sm:items-end sm:space-x-2">
                           <div className="col-span-2 min-w-0 sm:flex-1">
                             <label className="block text-xs text-gray-500">Name *</label>
-                            <input type="text" required value={v.name}
-                              onChange={(e) => { const nv = [...variants]; nv[i].name = e.target.value; setVariants(nv) }}
+                            <input type="text" value={v.name}
+                              onChange={(e) => setVariants(variants.map((row, j) => j === i ? { ...row, name: e.target.value } : row))}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" placeholder="e.g. Color 1" />
                           </div>
                           <div className="min-w-0 sm:w-20">
                             <label className="block text-xs text-gray-500">Color Code</label>
                             <input type="text" value={v.colorCode}
-                              onChange={(e) => { const nv = [...variants]; nv[i].colorCode = e.target.value; setVariants(nv) }}
+                              onChange={(e) => setVariants(variants.map((row, j) => j === i ? { ...row, colorCode: e.target.value } : row))}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
                           <div className="min-w-0 sm:w-20">
                             <label className="block text-xs text-gray-500">Cartons</label>
                             <input type="number" value={v.totalCartons}
-                              onChange={(e) => { const nv = [...variants]; nv[i].totalCartons = e.target.value; setVariants(nv) }}
+                              onChange={(e) => setVariants(variants.map((row, j) => j === i ? { ...row, totalCartons: e.target.value } : row))}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
                           <div className="min-w-0 sm:w-20">
                             <label className="block text-xs text-gray-500">Pieces</label>
                             <input type="number" min="0" value={v.totalPieces}
-                              onChange={(e) => { const nv = [...variants]; nv[i].totalPieces = e.target.value; setVariants(nv) }}
+                              onChange={(e) => setVariants(variants.map((row, j) => j === i ? { ...row, totalPieces: e.target.value } : row))}
                               className="mt-1 block w-full border border-gray-300 rounded p-1.5 text-sm" />
                           </div>
                           {variants.length > 1 && (
@@ -486,8 +515,8 @@ function Products() {
                           )}
                         </div>
                       ))}
+                      <p className="text-xs text-gray-500">Leave a row blank to skip it. Cartons and pieces are the starting stock for a new variant.</p>
                     </div>
-                )
               ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">{editingProduct ? 'Total Stock' : 'Initial Stock'}</label>

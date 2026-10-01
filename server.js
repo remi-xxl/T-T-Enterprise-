@@ -49,6 +49,43 @@ function stockFromInput({ totalCartons, totalPieces }, piecesPerCarton) {
   return { totalPieces: safeCartons * piecesPerCarton, totalCartons: safeCartons };
 }
 
+// Creates variants along with their inventory rows.  Blank names are skipped and
+// names that already belong to the product are ignored (case-insensitive), so
+// this is safe to call when editing a product that already has variants.
+// Must be called with a transaction client.
+async function addVariants(tx, productId, piecesPerCarton, variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return [];
+
+  const existing = await tx.variant.findMany({
+    where: { productId },
+    select: { name: true }
+  });
+  const seen = new Set(existing.map((v) => v.name.toLowerCase()));
+  const created = [];
+
+  for (const v of variants) {
+    const name = v?.name?.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const variant = await tx.variant.create({
+      data: { productId, name, colorCode: v.colorCode || null }
+    });
+    const stock = stockFromInput(v, piecesPerCarton);
+    await tx.variantInventory.create({
+      data: {
+        variantId: variant.id, totalCartons: stock.totalCartons,
+        remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
+      }
+    });
+    created.push(variant);
+  }
+
+  return created;
+}
+
 function calculateSalePricing({ quantity, saleType, piecesPerCarton, unitPrice, lineTotal, pricingMethod }) {
   const quantityNumber = Number(quantity);
   const piecesSold = saleType === 'carton' ? quantityNumber * piecesPerCarton : quantityNumber;
@@ -177,42 +214,33 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/products', async (req, res) => {
   try {
     const { name, price, piecesPerCarton, colorCode, lowStockThreshold, totalCartons, totalPieces, hasVariants, variants } = req.body;
-    const product = await prisma.product.create({
-      data: {
-        name, price, piecesPerCarton, colorCode,
-        lowStockThreshold: lowStockThreshold || 5,
-        hasVariants: hasVariants || false
-      }
-    });
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          name, price, piecesPerCarton, colorCode,
+          lowStockThreshold: lowStockThreshold || 5,
+          hasVariants: hasVariants || false
+        }
+      });
 
-    if (hasVariants && variants && variants.length > 0) {
-      const seen = new Set();
-      for (const v of variants) {
-        const vName = v.name?.trim();
-        if (!vName) continue;
-        const key = vName.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const variant = await prisma.variant.create({
-          data: { productId: product.id, name: vName, colorCode: v.colorCode || null }
-        });
-        const stock = stockFromInput(v, piecesPerCarton);
-        await prisma.variantInventory.create({
+      const added = hasVariants
+        ? await addVariants(tx, created.id, piecesPerCarton, variants)
+        : [];
+
+      // A variant product tracks its stock per variant, so the product-level
+      // inventory row is only created when no variant was actually added.
+      if (added.length === 0) {
+        const stock = stockFromInput({ totalCartons, totalPieces }, piecesPerCarton);
+        await tx.inventory.create({
           data: {
-            variantId: variant.id, totalCartons: stock.totalCartons,
+            productId: created.id, totalCartons: stock.totalCartons,
             remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
           }
         });
       }
-    } else {
-      const stock = stockFromInput({ totalCartons, totalPieces }, piecesPerCarton);
-      await prisma.inventory.create({
-        data: {
-          productId: product.id, totalCartons: stock.totalCartons,
-          remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
-        }
-      });
-    }
+
+      return created;
+    });
 
     const result = await prisma.product.findUnique({
       where: { id: product.id },
@@ -227,15 +255,41 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, piecesPerCarton, colorCode, lowStockThreshold, totalCartons, totalPieces } = req.body;
+    const productId = parseInt(id);
+    const { name, price, piecesPerCarton, colorCode, lowStockThreshold, totalCartons, totalPieces, hasVariants, variants } = req.body;
     const stockWasProvided = totalCartons !== '' && totalCartons !== null && totalCartons !== undefined ||
       totalPieces !== '' && totalPieces !== null && totalPieces !== undefined;
 
     const product = await prisma.$transaction(async (tx) => {
-      const updated = await tx.product.update({
-        where: { id: parseInt(id) },
-        data: { name, price, piecesPerCarton, colorCode, lowStockThreshold }
+      const existing = await tx.product.findUnique({
+        where: { id: productId },
+        include: { variants: { select: { id: true } } }
       });
+      if (!existing) {
+        const notFound = new Error('Product not found');
+        notFound.status = 404;
+        throw notFound;
+      }
+
+      // Variants can be added to a plain product, but a product that already has
+      // variants cannot drop them here: sales history and stock rows point at them.
+      if (hasVariants === false && existing.variants.length > 0) {
+        const blocked = new Error('This product already has variants. Delete them before turning variants off.');
+        blocked.status = 400;
+        throw blocked;
+      }
+
+      const nextHasVariants = hasVariants === undefined ? existing.hasVariants : !!hasVariants;
+      const updated = await tx.product.update({
+        where: { id: productId },
+        data: { name, price, piecesPerCarton, colorCode, lowStockThreshold, hasVariants: nextHasVariants }
+      });
+
+      // Only variants that do not exist yet are created here; existing ones keep
+      // their stock and are managed from the Inventory page.
+      if (nextHasVariants) {
+        await addVariants(tx, productId, updated.piecesPerCarton, variants);
+      }
 
       // Variant quantities are managed per variant; single-product stock can
       // be updated directly from this form in either cartons or pieces.
@@ -259,11 +313,18 @@ app.put('/api/products/:id', async (req, res) => {
           });
         }
       }
+      // Converting to a variant product deliberately leaves any existing
+      // product-level inventory row untouched; it is simply no longer shown.
       return updated;
     });
-    res.json(product);
+
+    const result = await prisma.product.findUnique({
+      where: { id: product.id },
+      include: { inventory: true, variants: { include: { inventory: true } } }
+    });
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 });
 
@@ -312,17 +373,18 @@ app.post('/api/products/:productId/variants', async (req, res) => {
       where: { productId: parseInt(productId), name: { equals: trimmedName, mode: 'insensitive' } }
     });
     if (existing) return res.status(400).json({ error: `Variant "${trimmedName}" already exists for this product` });
-    const variant = await prisma.variant.create({
-      data: { productId: parseInt(productId), name: trimmedName, colorCode: colorCode || null }
-    });
-    const stock = stockFromInput({ totalCartons, totalPieces }, product.piecesPerCarton);
-    await prisma.variantInventory.create({
-      data: {
-        variantId: variant.id, totalCartons: stock.totalCartons,
-        remainingCartons: stock.totalCartons, totalPieces: stock.totalPieces, remainingPieces: stock.totalPieces
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Adding a variant to a plain product converts it into a variant product,
+      // otherwise the new variant would never show up in the UI.
+      if (!product.hasVariants) {
+        await tx.product.update({ where: { id: product.id }, data: { hasVariants: true } });
       }
+      const [variant] = await addVariants(tx, product.id, product.piecesPerCarton, [
+        { name: trimmedName, colorCode, totalCartons, totalPieces }
+      ]);
+      return tx.variant.findUnique({ where: { id: variant.id }, include: { inventory: true } });
     });
-    const result = await prisma.variant.findUnique({ where: { id: variant.id }, include: { inventory: true } });
     res.status(201).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
